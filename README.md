@@ -19,7 +19,8 @@ var app = express();
 
 app.configure(function(){
 	// If fails, dies with a 401
-	app.use(hmmac.middleware({}, function(reqAccessKeyId, callback) {
+	var hmmacOptions = {headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true};
+	app.use(hmmac.middleware(hmmacOptions, function(reqAccessKeyId, callback) {
 		asyncGetUserByApiKey(reqAccessKeyId, function(user) {
 	  	callback({
 	  			accessKeyId: user.apikey
