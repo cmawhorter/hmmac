@@ -1,13 +1,11 @@
-# hmmac (pronounced hammock)
+# hmmac (pronounced hammock) [![Build Status](https://secure.travis-ci.org/cmawhorter/hmmac.png)](http://travis-ci.org/cmawhorter/hmmac)
 
 HMAC authentication module and middleware for express/connect and node.
 
 hmmac was forked from [ofuda](http://github.com/wolfeidau/ofuda).
 
-[![Build Status](https://secure.travis-ci.org/cmawhorter/hmmac.png)](http://travis-ci.org/cmawhorter/hmmac)
-
 ## Getting Started
-_Coming Soon_  npm install hmmac
+`npm install hmmac`
 
 ```javascript
 var Hmmac = require('hmmac');
