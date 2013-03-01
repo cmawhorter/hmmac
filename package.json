@@ -1,7 +1,7 @@
 {
     "name": "hmmac",
     "description": "HMAC Authentication Module and middleware for express/connect and node",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "homepage": "https://github.com/cmawhorter/hmmac",
     "author": {
         "name": "Cory Mawhorter",
@@ -40,16 +40,16 @@
         "test": "grunt test"
     },
     "dependencies": {
-        "lodash": "~0.8.2",
-        "cryptiles": "~0.0.1"
+        "lodash": "1.x",
+        "cryptiles": "0.1.x"
     },
     "devDependencies": {
-        "grunt": "~0.3.12",
-        "grunt-simple-mocha": "~0.2.0",
-        "mocha": "~1.6.0",
-        "should": "~1.2.0",
-        "express": "3.x",
-        "superagent": "0.12.x"
+        "grunt": "*",
+        "grunt-simple-mocha": "*",
+        "mocha": "*",
+        "should": "*",
+        "superagent": "*",
+        "express": "3.x"
     },
     "keywords": [
         "hmac",
