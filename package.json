@@ -40,16 +40,17 @@
         "test": "grunt test"
     },
     "dependencies": {
-        "lodash": "1.x",
+        "lodash": "1.0.x",
         "cryptiles": "0.1.x"
     },
     "devDependencies": {
-        "grunt": "*",
-        "grunt-simple-mocha": "*",
-        "mocha": "*",
-        "should": "*",
-        "superagent": "*",
-        "express": "3.x"
+        "grunt": "0.4.x",
+        "grunt-cli": "0.1.x",
+        "grunt-simple-mocha": "0.3.x",
+        "mocha": "1.8.x",
+        "should": "1.2.x",
+        "express": "3.1.x",
+        "superagent": "0.12.x"
     },
     "keywords": [
         "hmac",
