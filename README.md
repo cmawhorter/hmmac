@@ -7,75 +7,135 @@ hmmac was forked from [ofuda](http://github.com/wolfeidau/ofuda).
 ## Getting Started
 `npm install hmmac`
 
-```javascript
-var Hmmac = require('hmmac');
-
-var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'});
-
-hmmac.signHttpRequest(request); // appends a hmac authorisation header to the request
-```
-
 ## Examples
 
-Use as a client is illustrated below.
+### Express/Connect Middleware
 
 ```javascript
-var http = require('http');
-var Hmmac = require('hmmac');
+var	express = require('express')
+	, hmmac = require('hmmac');
 
-var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
+var app = express();
 
-var credentials = {accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
-
-http_options = {
-    host: 'localhost',
-    port: 8080,
-    path: '/notify',
-    method: 'PUT',
-    headers: {
-        'Content-Type': 'application/json',
-        'Content-MD5': 'ee930827ccb58cd846ca31af5faa3634'
-    }
-};
-
-signedOptions = hmmac.signHttpRequest(credentials, http_options);
-
-var req = http.request(signedOptions, function(res) {
-    console.log('STATUS: ' + res.statusCode);
-    console.log('HEADERS: ' + JSON.stringify(res.headers));
+app.configure(function(){
+	// If fails, dies with a 401
+	app.use(hmmac.middleware({}, function(reqAccessKeyId, callback) {
+		asyncGetUserByApiKey(reqAccessKeyId, function(user) {
+	  	callback({
+	  			accessKeyId: user.apikey
+	  		, accessKeySecret: user.apisecret
+	  	});
+		});
+	}));
 });
-
-req.write('{"some":"thing"}');
-req.end();
 ```
 
-Use as a server is as follows.
+### Signing restler client requests
+
+Can be used to sign requests made with restler or restify (not shown) clients.
 
 ```javascript
-var http = require('http'),
-    Hmmac = require('hmmac');
+var crypto = require('crypto')
+	, restler = require('restler')
+	, hmmac = require('hmmac')
+	, moment = require('moment');
 
+var hmmac = new Hmmac({
+	  	headerPrefix: 'Amz'
+	  , hash: 'sha256'
+	  , serviceLabel: 'AWS'
+	  , debug: true
+	});
 
-var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
+function signRestlerRequest(path, method, data, headers) {
+	var req = {
+    	method: method || 'GET'
+    , path: path
+    , headers: {
+    	// Insert default headers here
+    }
+	};
 
-var validateCredentials = function(requestAccessKeyId){
-    return {accessKeyId: requestAccessKeyId, accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
+	if (typeof data != 'undefined') req.data = data;
+	if (headers)
+	{
+		for (var name in headers)
+		{
+			headers[name.toLowerCase()] = headers[name];
+		}
+	}
+
+	if (!req.headers['content-type']) req.headers['content-type'] = 'application/json';
+	if (!req.headers['content-md5']) req.headers['content-md5'] = crypto.createHash('md5').update(req.data || '').digest('hex');
+	if (!req.headers['date']) req.headers['date'] = moment().utc().format('ddd, DD MMM YYYY HH:mm:ss ZZ');
+
+  req = hmmac.signHttpRequest(credentials, req);
+
+	return restler[req.method.toLowerCase()]('http://localhost:8081'+req.path, req);
 }
 
-http.createServer(function (request, response) {
+var rest = signRestlerRequest('/test/ping');
 
-    if(hmmac.validateHttpRequest(request, validateCredentials)){
-        response.writeHead(200);
-        response.end('Success!');
-    } else {
-        response.writeHead(401)
-        response.end('Authorization failed!');
-    }
-
-}).listen(8080);
-
-console.log('Server running at http://127.0.0.1:8080/');
+rest.on('success', function(data, response) {
+	console.log('success', data);
+}).on('fail', function(data, response) {
+	console.log('fail');
+}).on('error', function(err, response) {
+	console.log('error');
+});
 ```
+
+### Vanilla
+
+```javascript
+var http = require('http')
+	, Hmmac = require('hmmac');
+
+var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true})
+	, credentials = {accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
+	, request = {
+		  	host: 'localhost'
+		  , port: 8080
+		  , path: '/notify'
+		  , method: 'PUT'
+		  , headers: {
+		    	'Content-Type': 'application/json'
+		    , 'Content-MD5': 'ee930827ccb58cd846ca31af5faa3634'
+		  }
+		};
+
+var signedRequest = hmmac.signHttpRequest(credentials, request);
+console.log(signedRequest);
+```
+
+## Quick Docs
+
+### Http Request
+
+An HTTP request object must have the following:
+```javascript
+{
+		path: '/some/path'
+	, method: 'GET or POST etc.'
+	, headers: {
+				'Content-Type': ''
+			, 'Content-MD5': 'md5 hash representing the content'
+			, 'Date': moment().utc().format('ddd, DD MMM YYYY HH:mm:ss ZZ')
+		}
+}
+```
+
+### Credentials
+
+Credentials must be provided in this form:
+```javascript
+{
+		accessKeyId: '[...]'
+	, accessKeySecret: '[...]'
+}
+```
+
+__Note: In the future, credentials will be replaced by a Credentials class.__
 
 ## License
 Copyright (c) 2012 Mark Wolfe
