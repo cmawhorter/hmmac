@@ -1,6 +1,6 @@
 var should = require('should'),
     _ = require('lodash'),
-    Ofuda = require('../lib/ofuda.js');
+    Hmmac = require('../lib/hmmac.js');
 
 var putRequest = {
     method:'PUT',
@@ -43,28 +43,28 @@ var secret = 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV';
 
 var credentials = {accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
 
-describe('ofuda client', function () {
+describe('hmmac client', function () {
 
-    var ofuda;
+    var hmmac;
 
 
     before(function () {
-        ofuda = new Ofuda();
+        hmmac = new Hmmac();
     });
 
     describe('options', function () {
 
         it('should have default options when not supplied', function () {
 
-            should.not.exist(ofuda.options.headerPrefix);
-            ofuda.options.hash.should.eql('sha1');
+            should.not.exist(hmmac.options.headerPrefix);
+            hmmac.options.hash.should.eql('sha1');
         });
 
         it('should accept and apply options', function () {
 
-            var ofuda = new Ofuda({headerPrefix:'Amz', hash: 'sha256'});
-            ofuda.options.should.have.property('headerPrefix', 'Amz');
-            ofuda.options.should.have.property('hash', 'sha256');
+            var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha256'});
+            hmmac.options.should.have.property('headerPrefix', 'Amz');
+            hmmac.options.should.have.property('hash', 'sha256');
 
         });
 
@@ -76,39 +76,39 @@ describe('ofuda client', function () {
 
         it('should match two x- headers in request', function () {
 
-            ofuda = new Ofuda({headerPrefix:'Amz'});
+            hmmac = new Hmmac({headerPrefix:'Amz'});
 
-            ofuda._locateHeadersByPrefix(putRequest)
+            hmmac._locateHeadersByPrefix(putRequest)
                 .should.eql([ 'X-Amz-Meta-Author', 'X-Amz-Magic' ]);
         });
 
         it('should generate a matching canonical string for given request', function(){
 
-            ofuda.headerPrefix('Amz');
+            hmmac.headerPrefix('Amz');
 
-            ofuda._buildCanonicalStringFromRequest(putRequest)
+            hmmac._buildCanonicalStringFromRequest(putRequest)
                 .should.eql(putCanonicalString);
         });
 
         it('should generate a matching signature for the given string', function(){
 
-            ofuda = new Ofuda({headerPrefix:'Amz', debug: true});
+            hmmac = new Hmmac({headerPrefix:'Amz', debug: true});
 
             // accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV',
-            ofuda._generateHMACSignature(credentials, putCanonicalString).should.eql('jZNOcbfWmD/A/f3hSvVzXZjM2HU=');
+            hmmac._generateHMACSignature(credentials, putCanonicalString).should.eql('jZNOcbfWmD/A/f3hSvVzXZjM2HU=');
         });
 
         it('should successfully sign a request', function(){
-            var ofuda = new Ofuda({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS'});
+            var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS'});
 
-            ofuda.signHttpRequest(credentials, putRequest).headers
+            hmmac.signHttpRequest(credentials, putRequest).headers
                 .should.have.property('Authorization', 'AWS 44CF9590006BF252F707:jZNOcbfWmD/A/f3hSvVzXZjM2HU=');
         });
 
         it('should invoke callback when passed to sign request', function(){
-            var ofuda = new Ofuda({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS'});
+            var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS'});
 
-            ofuda.signHttpRequest(credentials, putRequest, function(request){
+            hmmac.signHttpRequest(credentials, putRequest, function(request){
 
                 return [request.headers['Content-Type'],'',
                     request.headers['Date'],request.path].join('\n');
@@ -119,19 +119,19 @@ describe('ofuda client', function () {
         });
 
         it('should provide backwards compatability to sync validate', function(){
-            ofuda.validateHttpRequest(signedPutRequest, function(accessKeyId){
+            hmmac.validateHttpRequest(signedPutRequest, function(accessKeyId){
                 return credentials;
             }).should.eql(true);
         });
 
         it('should validate the signature of a request', function(){
-            ofuda.validateHttpRequestSync(signedPutRequest, function(accessKeyId){
+            hmmac.validateHttpRequestSync(signedPutRequest, function(accessKeyId){
                 return credentials;
             }).should.eql(true);
         });
 
         it('should validate async and provide credentials async', function(done){
-            ofuda.validateHttpRequest(signedPutRequest, function(accessKeyId, callback){
+            hmmac.validateHttpRequest(signedPutRequest, function(accessKeyId, callback){
                 process.nextTick(function() {
                     callback(credentials);
                 });
@@ -142,7 +142,7 @@ describe('ofuda client', function () {
         });
 
         it('should validate async and provide credentials sync', function(done){
-            ofuda.validateHttpRequest(signedPutRequest, function(accessKeyId){
+            hmmac.validateHttpRequest(signedPutRequest, function(accessKeyId){
                 return credentials;
             }, function(valid) {
                 if (true !== valid) throw new Error('Not true');
@@ -153,7 +153,7 @@ describe('ofuda client', function () {
         it('should error if authCallback returns and async callbacks', function(){
             var noop = function(){};
             (function() {
-                ofuda.validateHttpRequest(signedPutRequest, function(accessKeyId, callback){
+                hmmac.validateHttpRequest(signedPutRequest, function(accessKeyId, callback){
                     callback(credentials);
                     return credentials;
                 }, noop);
@@ -163,7 +163,7 @@ describe('ofuda client', function () {
         it('throws an error if async callback called multiple times', function(){
             var noop = function(){};
             (function() {
-                ofuda.validateHttpRequest(signedPutRequest, function(accessKeyId, callback){
+                hmmac.validateHttpRequest(signedPutRequest, function(accessKeyId, callback){
                     callback(credentials);
                     callback(credentials);
                 }, noop);
@@ -171,7 +171,7 @@ describe('ofuda client', function () {
         });
 
         it('should not bomb out if the Authorisation header is missing', function(){
-            ofuda.validateHttpRequest(unsignedPutRequest, function(accessKeyId){
+            hmmac.validateHttpRequest(unsignedPutRequest, function(accessKeyId){
                 return credentials;
             }).should.eql(false);
         });
@@ -182,7 +182,7 @@ describe('ofuda client', function () {
 
             badPutRequest.headers['Authorization'] = 'SomeJunk';
 
-            ofuda.validateHttpRequest(unsignedPutRequest, function(accessKeyId){
+            hmmac.validateHttpRequest(unsignedPutRequest, function(accessKeyId){
                 return credentials;
             }).should.eql(false);
         });

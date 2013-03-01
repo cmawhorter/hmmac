@@ -1,7 +1,7 @@
 var http = require('http'),
-    Ofuda = require('../lib/ofuda');
+    Hmmac = require('../lib/hmmac');
 
-var ofuda = new Ofuda({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
+var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
 
 var validateCredentials = function(requestAccessKeyId){
     return {accessKeyId: requestAccessKeyId, accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
@@ -9,7 +9,7 @@ var validateCredentials = function(requestAccessKeyId){
 
 http.createServer(function (request, response) {
 
-    if(ofuda.validateHttpRequest(request, validateCredentials)){
+    if(hmmac.validateHttpRequest(request, validateCredentials)){
         response.writeHead(200);
         response.end('Success!');
     } else {

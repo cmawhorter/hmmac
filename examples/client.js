@@ -1,7 +1,7 @@
 var http = require('http');
-var Ofuda = require('../lib/ofuda');
+var Hmmac = require('../lib/hmmac');
 
-var ofuda = new Ofuda({headerPrefix: 'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
+var hmmac = new Hmmac({headerPrefix: 'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
 
 var credentials = {accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
 
@@ -17,7 +17,7 @@ http_options = {
     }
 };
 
-signedOptions = ofuda.signHttpRequest(credentials, http_options);
+signedOptions = hmmac.signHttpRequest(credentials, http_options);
 
 var req = http.request(signedOptions, function (res) {
     console.log('STATUS: ' + res.statusCode);

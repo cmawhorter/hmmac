@@ -1,22 +1,21 @@
-# ofuda
+# hmmac (pronounced hammock)
 
-HMAC authentication module for NodeJS.
+HMAC authentication module and middleware for express/connect and node.
 
-[![Build Status](https://secure.travis-ci.org/wolfeidau/ofuda.png)](http://travis-ci.org/wolfeidau/ofuda)
+hmmac was forked from [ofuda](http://github.com/wolfeidau/ofuda).
+
+[![Build Status](https://secure.travis-ci.org/cmawhorter/hmmac.png)](http://travis-ci.org/cmawhorter/hmmac)
 
 ## Getting Started
-Install the module with: `npm install ofuda`
+_Coming Soon_  npm install hmmac
 
 ```javascript
-Ofuda = require('ofuda');
+var Hmmac = require('hmmac');
 
-var ofuda = new Ofuda({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'});
+var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'});
 
-ofuda.signHttpRequest(request); // appends a hmac authorisation header to the request
+hmmac.signHttpRequest(request); // appends a hmac authorisation header to the request
 ```
-
-## Documentation
-_(Coming soon)_
 
 ## Examples
 
@@ -24,9 +23,9 @@ Use as a client is illustrated below.
 
 ```javascript
 var http = require('http');
-var Ofuda = require('ofuda');
+var Hmmac = require('hmmac');
 
-var ofuda = new Ofuda({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
+var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
 
 var credentials = {accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
 
@@ -41,7 +40,7 @@ http_options = {
     }
 };
 
-signedOptions = ofuda.signHttpRequest(credentials, http_options);
+signedOptions = hmmac.signHttpRequest(credentials, http_options);
 
 var req = http.request(signedOptions, function(res) {
     console.log('STATUS: ' + res.statusCode);
@@ -56,10 +55,10 @@ Use as a server is as follows.
 
 ```javascript
 var http = require('http'),
-    Ofuda = require('ofuda');
+    Hmmac = require('hmmac');
 
 
-var ofuda = new Ofuda({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
+var hmmac = new Hmmac({headerPrefix:'Amz', hash: 'sha1', serviceLabel: 'AWS', debug: true});
 
 var validateCredentials = function(requestAccessKeyId){
     return {accessKeyId: requestAccessKeyId, accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
@@ -67,7 +66,7 @@ var validateCredentials = function(requestAccessKeyId){
 
 http.createServer(function (request, response) {
 
-    if(ofuda.validateHttpRequest(request, validateCredentials)){
+    if(hmmac.validateHttpRequest(request, validateCredentials)){
         response.writeHead(200);
         response.end('Success!');
     } else {
@@ -80,12 +79,9 @@ http.createServer(function (request, response) {
 console.log('Server running at http://127.0.0.1:8080/');
 ```
 
-## Contributing
-In lieu of a formal style guide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using [grunt](https://github.com/cowboy/grunt).
-
-## Release History
-_(Nothing yet)_
-
 ## License
-Copyright (c) 2012 Mark Wolfe  
+Copyright (c) 2012 Mark Wolfe
+Licensed under the MIT license.
+
+Copyright (c) 2013 Cory Mawhorter
 Licensed under the MIT license.

@@ -1,7 +1,7 @@
 var	express = require('express'),
-	ofuda = require('../lib/ofuda');
+	hmmac = require('../lib/hmmac');
 
-module.exports = function(ofudaOptions, validateCallback) {
+module.exports = function(hmmacOptions, validateCallback) {
 	var app = express();
 
 	app.use(express.logger('dev'));
@@ -12,7 +12,7 @@ module.exports = function(ofudaOptions, validateCallback) {
 	// 	next();
 	// });
 
-	app.use(ofuda.middleware(ofudaOptions, validateCallback));
+	app.use(hmmac.middleware(hmmacOptions, validateCallback));
 
 	app.put('/quotes/nelson', function(req, res) {
 	    res.send(200, 'Request Authenticated');

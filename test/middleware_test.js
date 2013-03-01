@@ -1,7 +1,7 @@
 var should = require('should'),
     _ = require('lodash'),
     http = require('http'),
-    Ofuda = require('../lib/ofuda');
+    Hmmac = require('../lib/hmmac');
 
 var credentials = {accessKeyId: '44CF9590006BF252F707', accessKeySecret: 'OtxrzxIsfpFjA7SwPzILwy8Bw21TLhquhboDYROV'};
 
@@ -31,14 +31,14 @@ var unsignedPutRequest = {
     }
 };
 
-var ofudaOptions = {
+var hmmacOptions = {
     headerPrefix: 'Amz', 
     hash: 'sha1', 
     serviceLabel: 'AWS', 
     debug: true
 };
 
-var app = require('./middleware_server')(ofudaOptions, function validateCredentials (requestAccessKeyId) {
+var app = require('./middleware_server')(hmmacOptions, function validateCredentials (requestAccessKeyId) {
     return credentials;
 });
 
@@ -46,7 +46,7 @@ http.createServer(app).listen(10112, function(){
     console.log('Express test server listening on port ' + 10112);
 });
 
-describe('ofuda middleware', function () {
+describe('hmmac middleware', function () {
 
     describe('/quotes/nelson', function () {
         it('should reject invalid signatures', function (done) {
@@ -62,8 +62,8 @@ describe('ofuda middleware', function () {
 
         it('should validate and accept properly signed requests', function (done) {
 
-            var ofuda = new Ofuda(ofudaOptions),
-                signedRequest = ofuda.signHttpRequest(credentials, putRequest);
+            var hmmac = new Hmmac(hmmacOptions),
+                signedRequest = hmmac.signHttpRequest(credentials, putRequest);
             // console.log('signedRequest', signedRequest);
 
             var req = http.request(signedRequest, function(res) {
