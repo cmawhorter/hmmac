@@ -2,8 +2,6 @@
 
 HMAC authentication module and middleware for express/connect and node.
 
-hmmac was forked from [ofuda](http://github.com/wolfeidau/ofuda).
-
 ## Getting Started
 `npm install hmmac`
 
@@ -139,8 +137,8 @@ Credentials must be provided in this form:
 __Note: In the future, credentials will be replaced by a Credentials class.__
 
 ## License
-Copyright (c) 2012 Mark Wolfe
+Copyright (c) 2014 Cory Mawhorter
 Licensed under the MIT license.
 
-Copyright (c) 2013 Cory Mawhorter
-Licensed under the MIT license.
+
+TODO: Include comparison of req/s with passport, etc.
