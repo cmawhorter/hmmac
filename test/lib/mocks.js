@@ -93,9 +93,9 @@ module.exports = {
       body: '{"some":"thing"}',
       headers: {
         'content-type': 'application/json',
-        date: 'Sat, 01 Mar 2014 06:53:50 GMT',
+        date: 'Sun, 02 Mar 2014 22:49:27 GMT',
         host: 'localhost:8080',
-        authorization: 'AWS4-HMAC-SHA256 Credential=1/20140228/no-region/no-service/aws4_request, SignedHeaders=content-type;date;host, Signature=3329a90931ab42ed328e9b8a1fb233a8668506d3d7c360259ad4d067c8d29c82'
+        authorization: 'AWS4-HMAC-SHA256 Credential=1/20140228/no-region/no-service/aws4_request, SignedHeaders=content-type;date;host, Signature=c609849febd5ab9e7290e867e7ede9be0e85507486468613ed908730b30f473a'
       }
     },
 

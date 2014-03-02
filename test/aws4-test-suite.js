@@ -7,7 +7,8 @@
  */
 
 var fs = require('fs')
-  , assert = require('assert');
+  , assert = require('assert')
+  , querystring = require('querystring');
 
 var Hmmac = require('../lib/hmmac');
 
@@ -31,11 +32,14 @@ function loadTest(hmmac, k) {
   // <file-name>.sreq— the signed request.
 
   var req = buildRequestObj(loadFile(k + '.req'))
-    , parsedAuth = parseAuthorization(hmmac, req, loadFile(k + '.authz'));
+    , parsedAuth = parseAuthorization(hmmac, req, loadFile(k + '.authz'))
+    , canonical = loadFile(k + '.creq')
+    , canonicalLines = canonical.split('\n');
 
   return {
     request: req,
-    canonical: loadFile(k + '.creq'),
+    canonical: canonical,
+    signedHeaders: canonicalLines[canonicalLines.length - 2].split(';'),
     sign: loadFile(k + '.sts'),
     auth: parsedAuth,
     signed: loadFile(k + '.sreq'),
@@ -60,8 +64,19 @@ function buildRequestObj(strRequest) {
 
   req.headers = {};
   req.method = line1[0].trim();
-  req.path = line1[1].trim();
+
+  var tmppath = line1[1].trim()
+    , query = ''
+    , path;
+  if (~tmppath.indexOf('?')) {
+    path = tmppath.split('?')[0];
+    query = tmppath.split('?')[1];
+  }
+  else path = tmppath;
   // request.version = line1[2].trim();
+
+  req.path = path;
+  req.query = querystring.parse(query);
 
   req.body = '';
 
@@ -154,19 +169,23 @@ describe('Hmmac', function() {
         var hmmac = new Hmmac({ scheme: Hmmac.schemes.load('aws4'), debug: 1 }); // debug > 0 required for test suite
         var test = loadTest(hmmac, fKey);
 
+        hmmac.config.signedHeaders = test.signedHeaders;
+        // console.log(test.request.headers);
+
+        var expectedAuthorizationHeader = test.request.headers['authorization'];
+        test.request.headers['authorization'] = null;
+
+        // verify test request no longer contains an auth header
+        assert.strictEqual(test.request.headers['authorization'], null);
+
         hmmac.config.schemeConfig = test.scope;
         hmmac.sign(test.request, credentials);
 
-        assert.equal(hmmac._lastRequest.original.headers['authorization'], test.request.headers['authorization']);
+        // console.log(hmmac._lastCanonicalRequest);
 
-        // console.log('========== Compare Canonical ==========');
-        // compareStrings(test.canonical, hmmac._lastCanonicalRequest, false);
-
-        // console.log('========== Compare String to Sign ==========');
-        // compareStrings(test.sign, hmmac._lastStringToSign, false);
-
-        // console.log('========== Compare Signature and Credentials ==========');
-        // compareStrings(test.request.headers['authorization'], hmmac._lastRequest.headers['authorization'], true);
+        assert.equal(hmmac._lastCanonicalRequest, test.canonical);
+        assert.equal(hmmac._lastStringToSign, test.sign);
+        assert.equal(test.request.headers['authorization'], expectedAuthorizationHeader);
       });
     });
 

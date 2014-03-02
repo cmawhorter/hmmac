@@ -1,1 +1,19 @@
 Everything in /test/aws was pulled from the test suite download here: http://docs.aws.amazon.com/general/latest/gr/signature-v4-test-suite.html
+
+I've removed 12 cases that I have no plans in supporting. I think all of them related to dupe headers and querystring sorting.
+
+===
+
+Example of dupe header test case that I removed:
+
+ZOO:foo
+zoo:bar
+zoo:foobar
+
+Gets turned into this in the canonical string:
+
+zoo:bar,foo,foobar
+
+===
+
+Since this isn't supported in most clients REST clients anyway, I see no reason in worrying about it here.
