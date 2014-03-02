@@ -19,9 +19,6 @@ var noop = function(){};
   describe('Hmmac scheme('+scheme+')', function() {
 
     describe('#_validate', function() {
-      it('should handle bad input');
-      it('should handle incorrectly formatted credentials');
-      it('should handle incorrectly formatted parsedAuth');
       it('should not check date skew if date not a signed header');
       it('should return false if date skew checked, but header missing');
       it('should return false if signature mismatch');
