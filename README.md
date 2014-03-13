@@ -16,7 +16,7 @@ As of right now, the API should be considered experimental.  I'm hoping to have 
 
 ## Getting Started
 
-`npm install hmmac@0.2.0`
+`npm install hmmac`
 
 ### Components
 
