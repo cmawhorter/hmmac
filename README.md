@@ -58,7 +58,7 @@ var DEFAULTS = {
   signedHeaders: [ 'host', 'content-type', 'date' ],
   wwwAuthenticateRealm: 'API',
   scheme: Hmmac.schemes.load('plain'),
-  debug: process.env.NODE_ENV == 'development' ? 1 : 0
+  debug: process.env.NODE_ENV == 'development' ? 1 : 0 // use 2 for more verbose
 };
 ```
 
@@ -128,12 +128,23 @@ Check examples/*.js for some quick-and-dirty examples.  client.js can make reque
 
 Any object that is request-like can be signed.  This means the normal bits... like host, port, path, headers.
 
+## Debugging / Troubleshooting
+
+To get more information about what's going on internally, enable `debug: 2` in the options.  With debugging enabled, you can call `hmmac.why()` to have details about the last request output to the console.
+
+```javascript
+var hmmac = new Hmmac({ debug: 1 });
+hmmac.validate(req, function(valid) {
+  hmmac.why();
+});
+```
+
 ## Replay Attacks
 
 Since hmmac (and AWS) is stateless, there is no way to guard against [replay attacks](http://en.wikipedia.org/wiki/Replay_attack).  The risk is mitigated by enforcing an automatic expiration of all requests.  It will be further reduced with implementation of the Expires header (planned very soon).
 
-In theory, it would be possible to slap an [nounce](http://en.wikipedia.org/wiki/Cryptographic_nonce) on requests and tie it into redis -- which would nullify this attack vector -- but that's outside the scope of Hmmac at this time.  _If you want to build something like this, open an issue and I'd be happy to share my thoughts._
+It's conceivably possible to slap an [nonce](http://en.wikipedia.org/wiki/Cryptographic_nonce) on requests, but that's outside the scope of Hmmac at this time.  
 
 ## License
-Copyright (c) 2014 Cory Mawhorter
+Copyright (c) 2015 Cory Mawhorter
 Licensed under the MIT license.
