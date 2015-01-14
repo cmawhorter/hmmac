@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "express": "^4.10.8",
+    "restify": "^2.8.4"
+  }
+}
