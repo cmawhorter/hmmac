@@ -29,13 +29,7 @@ var hmmac = new Hmmac({
   }
 });
 
-app.use(function (req, res, next) {
-  hmmac.validate(req, function(valid) {
-    console.log('This should be valid', valid);
-    hmmac.why();
-  });
-});
-
+app.use(Hmmac.middleware(hmmac));
 
 var server = app.listen(3000, function () {
   AWS.config.update({
