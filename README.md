@@ -1,12 +1,12 @@
 # hmmac (pronounced hammock) [![Build Status](https://secure.travis-ci.org/cmawhorter/hmmac.png)](http://travis-ci.org/cmawhorter/hmmac)
 
-Flexible HMAC authentication module for express/connect and beyond -- with no external dependencies.
+Flexible HMAC authentication module for express/connect and beyond -- with no external (to nodejs) dependencies.
 
 It is modeled on AWS request signing and has all the pros/cons of their method.  
   * Pro: Stateless, fast and established
   * Con: [Subject to replay attacks](http://stackoverflow.com/a/12267408)  (See note at bottom)
 
-What is this useful for? Building arbitrary authentication schemes and authorizing against them (usually for use with an API).
+What is this useful for? Building arbitrary stateless authentication schemes and authorizing against them (usually for use with an API).  i.e. not OAuth or anything else that requires session state.
 
 ## About
 
@@ -34,6 +34,25 @@ var Hmmac = require('hmmac');
 server.use(Hmmac.middleware()); // middleware requires a credentialProvider, but we'll get to that later
 ```
 
+They are both built around signing and validating node's standard http objects.
+
+```javascript
+// directly
+var hmmac = new Hmmac();
+hmmac.validate(req, function(valid) {
+  // parses req.headers['authorization']
+  // valid is true/false (like.fs.exists)
+});
+
+// middleware
+var verifySigned = Hmmac.middleware({
+  credentialProvider: function(key, callback) { /* ... */ }
+});
+server.post('/message', verifySigned, function(req, res, next) {
+  // if we're here, the request was authenticated
+});
+```
+
 ### Config Options
 
 These are the current defaults.  Most are self-explanatory. You specify them like so:
@@ -42,7 +61,7 @@ These are the current defaults.  Most are self-explanatory. You specify them lik
 var Hmmac = require('hmmac');
 var hmmac = new Hmmac({ algorithm: 'sha1' }); // normal
 server.use(Hmmac.middleware({ credentialProvider: function(key, callback){} })); // middleware
-// and you could also do this with middleware:
+// btw: you can pass an existing instance directly to the middleware
 server.use(Hmmac.middleware(hmmac)); // and pass an existing hmmac object
 ```
 
@@ -82,7 +101,9 @@ function credentialProvider(key, callback) {
 
 **signedHeaders:** Only the headers here will be used in the message to sign.  All others will be ignored and could be modified enroute without invalidating the request.  
 
-**wwwAuthenticateRealm:** See [this RFC](https://www.ietf.org/rfc/rfc2617.txt) for more information about WWW-Authenticate.  The goal is to help the client automatically negotiate the correct authorization.  You can disable by setting to falsey.
+**wwwAuthenticateRealm:** See [this RFC](https://www.ietf.org/rfc/rfc2617.txt) for more information about WWW-Authenticate.  The goal is to help the client automatically negotiate the correct authorization.  You can disable by setting to falsey.  
+
+_Breaking change warning: Defaults to the string 'API' in 0.2.x.  In 0.3.0, it will default to false.  No one seeems to use this._
 
 **scheme:** See Schemes below.  This will load the scheme module, which will make sure your authorization header conforms to the desired format.  Use Hmmac.schemes.load('[scheme]') to load a scheme.  Currently aws4 and plain are the only two supported.
 
@@ -117,9 +138,11 @@ Authorization: HMAC 7c132f4...the user api key...4907d6a9:7640579425817317c132f4
 X-Auth-SignedHeaders: content-type;date;host
 ```
 
-#### Custom
+#### Custom Schemes
 
 You can also create your own custom scheme and plug it into Hmmac.  Just make sure it follows the format of the other schemes and then do: `new Hmmac({ scheme: require('my-custom-scheme') })`
+
+See below for details on how to implement your own scheme.
 
 
 ## Examples
@@ -138,6 +161,31 @@ hmmac.validate(req, function(valid) {
   hmmac.why();
 });
 ```
+
+## Custom Schemes
+
+Hmmac ships with [two built-in schemes](https://github.com/cmawhorter/hmmac/tree/master/lib/schemes).  If you're interested in implementing your own scheme, copying and modifying `plain` is probably a good place to start.
+
+### Required Properties
+
+A scheme must be an object literal with the following properies.   These properties are used by the core hmmac lib to validate and sign requests with your scheme.  
+
+  - `parseAuthorization: function(req)` - Single argument is something that looks like node's http.ClientRequest.  Returns a Parsed Auth object literal (defined below).
+  - `buildAuthorization: function(req, key, signature)` - Returns the key/value header. e.g. `return { key: 'x-my-custom-authorization-header', value: 'HMAC af:1def' }`
+  - `sign: function(req, credentials)` - Modifies the request with all the necessary bits ot make your scheme work and returns the signature.
+  - `getServiceLabel: function()` - Returns a string service label representing your auth scheme.  e.g. `return 'MYAPI';`
+
+### Parsed Auth
+
+An object literal with three required string properties.  
+
+Example:  `HMAC 7c132f4:7640579425817317c132f4a2feb54`
+
+  - `serviceLabel` = `'HMAC'`
+  - `key` = `'7c132f4'`
+  - `signature` = `'7640579425817317c132f4a2feb54'`
+
+You can extend the object with any additional properties to make your scheme work.  e.g. the aws4 scheme includes an additional `schemeConfig` property which parses all that `Credential=..., SignedHeaders=..., Signature=...` stuff.
 
 ## Replay Attacks
 
