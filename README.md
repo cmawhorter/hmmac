@@ -187,6 +187,10 @@ Example:  `HMAC 7c132f4:7640579425817317c132f4a2feb54`
 
 You can extend the object with any additional properties to make your scheme work.  e.g. the aws4 scheme includes an additional `schemeConfig` property which parses all that `Credential=..., SignedHeaders=..., Signature=...` stuff.
 
+## Express 4.x
+
+As of Express 4.0 (and maybe earlier) [req.body will be undefined by default](http://expressjs.com/api.html#req.body) and you must include body-parser to have req.body be populated.  req.body is required for hmmac to work so be sure to include the body-parser middleware *prior* to hmmac's middleware otherwise validation will fail.
+
 ## Replay Attacks
 
 Since hmmac (and AWS) is stateless, there is no way to guard against [replay attacks](http://en.wikipedia.org/wiki/Replay_attack).  The risk is mitigated by enforcing an automatic expiration of all requests.  It will be further reduced with implementation of the Expires header (planned very soon).
