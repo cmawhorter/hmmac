@@ -15,12 +15,7 @@
   "bugs": {
     "url": "https://github.com/cmawhorter/hmmac/issues"
   },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "https://github.com/cmawhorter/hmmac/blob/master/LICENSE"
-    }
-  ],
+  "license": "MIT",
   "main": "lib/hmmac",
   "engines": {
     "node": ">= 0.7.0"
@@ -29,14 +24,15 @@
     "test": "grunt test"
   },
   "devDependencies": {
+    "aws-sdk": "^2.1.35",
     "grunt": "0.4.x",
+    "grunt-cli": "^0.1.13",
     "grunt-contrib-jshint": "~0.6.3",
-    "grunt-simple-mocha": "0.4.x",
-    "restify": "2.x",
-    "superagent": "0.12.x",
-    "mocha": "^1.17.1",
     "grunt-mocha-test": "0.10.x",
-    "grunt-cli": "^0.1.13"
+    "grunt-simple-mocha": "0.4.x",
+    "mocha": "^1.17.1",
+    "restify": "2.x",
+    "superagent": "0.12.x"
   },
   "keywords": [
     "hmac",
