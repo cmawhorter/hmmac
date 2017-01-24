@@ -1,7 +1,12 @@
 {
   "name": "hmmac",
   "description": "Easy HMAC connect/express middleware",
-  "version": "0.2.1",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.js",
+    "prepublish": "npm test && npm run build",
+    "test": "mocha test"
+  },
   "homepage": "https://github.com/cmawhorter/hmmac",
   "author": {
     "name": "Cory Mawhorter",
@@ -16,23 +21,18 @@
     "url": "https://github.com/cmawhorter/hmmac/issues"
   },
   "license": "MIT",
-  "main": "lib/hmmac",
+  "main": "./dist/hmmac.cjs.js",
+  "jsnext:main": "./dist/hmmac.es.js",
+  "module": "./dist/hmmac.es.js",
   "engines": {
     "node": ">= 0.7.0"
-  },
-  "scripts": {
-    "test": "grunt test"
   },
   "devDependencies": {
     "aws-sdk": "^2.1.35",
     "body-parser": "^1.13.1",
+    "expect": "^1.20.2",
     "express": "^4.13.0",
-    "grunt": "0.4.x",
-    "grunt-cli": "^0.1.13",
-    "grunt-contrib-jshint": "~0.6.3",
-    "grunt-mocha-test": "0.10.x",
-    "grunt-simple-mocha": "0.4.x",
-    "mocha": "^1.17.1",
+    "mocha": "^3.2.0",
     "restify": "2.x",
     "superagent": "0.12.x"
   },
