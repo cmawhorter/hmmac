@@ -4,36 +4,46 @@
 var assert = require('assert');
 
 var express = require('express');
-var Hmmac = require('../lib/hmmac.js');
+var HMMAC = require('../src/main.js');
+var Hmmac = HMMAC.Hmmac;
 var AWS = require('aws-sdk');
 
 var accessKeyId = 's3box';
 var secretAccessKey = 's3box';
 
+var defaultCredentialProvider = function(key, callback) {
+  if(key !== accessKeyId) {
+    return callback(null, null);
+  } else {
+    callback(null, accessKeyId, secretAccessKey);
+  }
+};
+
+var defaultInvalidCredentialProvider = function(key, callback) {
+  if(key !== accessKeyId) {
+    return callback(null, null);
+  } else {
+    callback(null, accessKeyId, 'invalid');
+  }
+};
 
 describe('node aws-sdk', function() {
 
   it('should authenticate against hmmac aws v4 scheme', function(done) {
     var app = express();
-    var hmmac = new Hmmac({
-      scheme: Hmmac.schemes.load('aws4'),
+    var hmmac = new Hmmac(new HMMAC.Aws4Scheme(), defaultCredentialProvider, {
       acceptableDateSkew: false,
       // debug: 3,
       schemeConfig: {
         region: 's3box',
         service: 's3'
       },
-      credentialProvider: function(key, callback) {
-        if(key !== accessKeyId) {
-          return callback(null)
-        } else {
-          callback({ key: accessKeyId, secret: secretAccessKey});
-        }
-      }
     });
 
     app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
+      hmmac.verifyHttpRequest(req, function(err, valid) {
+        err && console.log(err.validationErrors);
+        assert.ifError(err);
         done(true === valid ? null : new Error('did not validate'));
       });
     });
@@ -61,25 +71,19 @@ describe('node aws-sdk', function() {
 
   it('should not authenticate invalid hmmac aws v4 scheme', function(done) {
     var app = express();
-    var hmmac = new Hmmac({
-      scheme: Hmmac.schemes.load('aws4'),
+    var hmmac = new Hmmac(new HMMAC.Aws4Scheme(), defaultInvalidCredentialProvider, {
       acceptableDateSkew: false,
       // debug: 3,
       schemeConfig: {
         region: 's3box',
         service: 's3'
       },
-      credentialProvider: function(key, callback) {
-        if(key !== accessKeyId) {
-          return callback(null)
-        } else {
-          callback({ key: accessKeyId, secret: 'invalid'});
-        }
-      }
     });
 
     app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
+      hmmac.verifyHttpRequest(req, function(err, valid) {
+        err && console.log(err.validationErrors);
+        assert.ifError(err);
         done(false === valid ? null : new Error('did not validate'));
       });
     });

@@ -4,7 +4,8 @@ var http = require('http');
 
 var express = require('express');
 var bodyParser = require('body-parser');
-var Hmmac = require('../lib/hmmac.js');
+var HMMAC = require('../src/main.js');
+var Hmmac = HMMAC.Hmmac;
 
 var validCreds = { key: 'a', secret: '1' };
 var invalidCreds = { key: 'a', secret: '2' };
@@ -13,16 +14,15 @@ describe('node express', function() {
 
   it('should authenticate', function(done) {
     var app = express();
-    var hmmac = new Hmmac({
-      credentialProvider: function(key, callback) {
-        callback(validCreds);
-      }
+    var hmmac = new Hmmac(new HMMAC.PlainScheme(), function(key, callback) {
+      callback(null, validCreds);
     });
 
     app.use(bodyParser.json());
 
     app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
+      hmmac.verifyHttpRequest(req, function(err, valid) {
+        assert.ifError(err);
         done(true === valid ? null : new Error('did not validate'));
       });
     });
@@ -40,7 +40,7 @@ describe('node express', function() {
           'Date': new Date().toUTCString()
         }
       };
-      hmmac.sign(signedRequest, validCreds);
+      hmmac.signHttpRequest(signedRequest, validCreds.key, validCreds.secret);
       var req = http.request(signedRequest, function(res) {
 
       });
@@ -53,16 +53,15 @@ describe('node express', function() {
 
   it('should not authenticate invalid', function(done) {
     var app = express();
-    var hmmac = new Hmmac({
-      credentialProvider: function(key, callback) {
-        callback(validCreds);
-      }
+    var hmmac = new Hmmac(new HMMAC.PlainScheme(), function(key, callback) {
+      callback(null, validCreds);
     });
 
     app.use(bodyParser.json());
 
     app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
+      hmmac.verifyHttpRequest(req, function(err, valid) {
+        assert.ifError(err);
         done(false === valid ? null : new Error('did not validate'));
       });
     });
@@ -80,7 +79,7 @@ describe('node express', function() {
           'Date': new Date().toUTCString()
         }
       };
-      hmmac.sign(signedRequest, invalidCreds);
+      hmmac.signHttpRequest(signedRequest, invalidCreds.key, invalidCreds.secret);
       var req = http.request(signedRequest, function(res) {
 
       });

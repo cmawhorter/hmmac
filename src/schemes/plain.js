@@ -1,90 +1,58 @@
-/*
- * hmmac
- * https://github.com/cmawhorter/hmmac
- *
- * Copyright (c) 2014 Cory Mawhorter
- * Licensed under the MIT license.
- */
+import BaseScheme from './_base.js';
 
-var querystring = require('querystring');
-
-var scheme = {
-  authorizationHeader: 'authorization',
-
-  getServiceLabel: function() {
-    return 'HMAC';
-  },
-
-  buildMessageToSign: function(req) {
-    req.signedHeaders.sort();
-
-    var CanonicalHeaders = '';
-    for (var i=0; i < req.signedHeaders.length; i++) {
-      var headerKey = req.signedHeaders[i]
-        , v = req.original.headers.hasOwnProperty(headerKey) ? req.original.headers[headerKey] : '';
-      CanonicalHeaders += headerKey.toLowerCase() + ':' + v.trim() + '\n';
-    }
-
-    var body = this._body(req);
-    var path = typeof req.original.path == 'function' ? req.original.path() : req.original.path || req.original.url;
-    var query = typeof req.original.query == 'function' ? req.original.query() : req.original.query || {};
-    if (typeof query == 'object') query = querystring.stringify(query);
-
-    var CanonicalRequest =
-        req.original.method.toUpperCase() + '\n' +
-        path + '\n' +
-        query + '\n' +
-        CanonicalHeaders + '\n' +
-        req.signedHeaders.join(';') + '\n' +
-        this._hash(body, 'hex');
-
-    if (this.config.debug) {
-      this._lastCanonicalRequest = CanonicalRequest;
-      this._lastRequestBody = body;
-    }
-
-    // console.log(CanonicalRequest, body);
-
-    return CanonicalRequest;
-  },
-
-  parseAuthorization: function(req) {
-    try {
-      // HMAC key:signature
-      var toks = req.original.headers[this.config.scheme.authorizationHeader].split(' ')
-        , sl = toks[0].trim()
-        , credtoks = toks[1].split(':');
-
-      if (!req.original.headers['x-auth-signedheaders']) throw new Error('Hmmac scheme(plain)::parseAuthorization: Request does not contain an x-auth-signedheaders header');
-
-      req.signedHeaders = req.original.headers['x-auth-signedheaders'].toLowerCase().split(/\s*\;\s*/);
-
-      return {
-        serviceLabel: sl,
-        key: credtoks[0],
-        signature: credtoks[1]
-      };
-    }
-    catch (err) {
-      this.log(err);
-      return null;
-    }
-  },
-
-  buildAuthorization: function(req, key, signature) {
-    return {
-      key: this.config.scheme.authorizationHeader,
-      value: this.config.scheme.getServiceLabel.call(this) + ' ' + key + ':' + signature
-    };
-  },
-
-  sign: function(req, credentials) {
-    if (this.config.debug) this._lastRequest = req;
-    var message = this.config.scheme.buildMessageToSign.call(this, req);
-    req.original.headers['x-auth-signedheaders'] = req.signedHeaders.join(';');
-    return this._hmac(message, credentials.secret, this.config.signatureEncoding);
+export default class PlainScheme extends BaseScheme {
+  constructor() {
+    super();
   }
 
-};
+  _headersSignedInRequest(req) {
+    return (req.getHeader('x-auth-signedheaders') || '').toLowerCase().split(/\s*\;\s*/);
+  }
 
-module.exports = scheme;
+  _signedHeaders(req) {
+    let requestSignedHeaders = this._headersSignedInRequest(req);
+    let signedHeaders = req.getSignedHeaders();
+    signedHeaders.sort();
+    return signedHeaders;
+  }
+
+  _canonicalHeadersForRequest(req, signedHeaders) {
+    return signedHeaders.map(headerName => {
+      headerName = headerName.toLowerCase();
+      let headerValue = (req.getHeader(headerName) || '').trim();
+      return `${headerName}:${headerValue}`;
+    });
+  }
+
+  message(req, options) {
+    let signedHeaders     = this._signedHeaders(req);
+    let canonicalHeaders  = this._canonicalHeadersForRequest(req, signedHeaders);
+    return [
+      req.method,
+      req.path,
+      req.query,
+      ...canonicalHeaders,
+      signedHeaders.join(';'),
+      this._hash(req.body, 'hex'),
+    ].join('\n');
+  }
+
+  parse(authorizationHeaderValue, options) {
+    let [serviceLabel, credentialTokens] = authorizationHeaderValue.split(/\s+/);
+    let [key, signature] = credentialTokens.split(':');
+    return { serviceLabel, key, signature };
+  }
+
+  build(req, key, secret, options) {
+    var signature = 'TODO:';
+    return `${this.serviceLabelPrefixed}${key}:${signature}`;
+  }
+}
+
+// ?
+  // sign: function(req, credentials) {
+  //   if (this.config.debug) this._lastRequest = req;
+  //   var message = this.config.scheme.buildMessageToSign.call(this, req);
+  //   req.original.headers['x-auth-signedheaders'] = req.signedHeaders.join(';');
+  //   return this._hmac(message, credentials.secret, this.config.signatureEncoding);
+  // }

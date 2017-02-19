@@ -1,20 +1,16 @@
-/*
- * hmmac
- * https://github.com/cmawhorter/hmmac
- *
- * Copyright (c) 2014 Cory Mawhorter
- * Licensed under the MIT license.
- */
-
 var fs = require('fs')
   , assert = require('assert')
   , querystring = require('querystring');
 
-var Hmmac = require('../lib/hmmac');
+var HMMAC = require('../src/main.js');
+var Hmmac = HMMAC.Hmmac;
+var aws4Scheme = new HMMAC.Aws4Scheme();
 
 var aws_tests = fs.readdirSync(__dirname + '/aws')
   , credentials = { key: 'AKIDEXAMPLE', secret: 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY' }
   , testkeys = [];
+
+var hmmac = new Hmmac(aws4Scheme, (key, callback) => callback(null, credentials.key, credentials.secret));
 
 function normalizeLineEndings(str) {
   return str.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -24,7 +20,7 @@ function loadFile(f) {
   return normalizeLineEndings(fs.readFileSync(__dirname + '/aws/' + f).toString());
 }
 
-function loadTest(hmmac, k) {
+function loadTest(k) {
   // <file-name>.req—the web request to be signed.
   // <file-name>.creq—the resulting canonical request.
   // <file-name>.sts—the resulting string to sign.
@@ -114,7 +110,8 @@ function buildRequestObj(strRequest) {
 function parseAuthorization(hmmac, req, strAuth) {
   // AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=content-type;date;host, Signature=5a15b22cf462f047318703b92e6f4f38884e4a7ab7b1d6426ca46a8bd1c26cbc
   req.headers['authorization'] = strAuth;
-  var parsedAuth = hmmac.config.scheme.parseAuthorization.call(hmmac, hmmac._wrap(req));
+  var req = hmmac.normalizeHttpRequest(req);
+  var parsedAuth = aws4Scheme.parse(strAuth, hmmac.options);
   return parsedAuth;
 }
 
@@ -166,10 +163,9 @@ describe('Hmmac', function() {
     testkeys.forEach(function(fKey) {
 
       it('should match the signature in ' + fKey, function() {
-        var hmmac = new Hmmac({ scheme: Hmmac.schemes.load('aws4'), debug: 1 }); // debug > 0 required for test suite
-        var test = loadTest(hmmac, fKey);
+        var test = loadTest(fKey);
 
-        hmmac.config.signedHeaders = test.signedHeaders;
+        hmmac.options.signedHeaders = test.signedHeaders;
         // console.log(test.request.headers);
 
         var expectedAuthorizationHeader = test.request.headers['authorization'];
@@ -179,7 +175,8 @@ describe('Hmmac', function() {
         assert.strictEqual(test.request.headers['authorization'], null);
 
         hmmac.config.schemeConfig = test.scope;
-        hmmac.sign(test.request, credentials);
+        var req = hmmac.normalizeHttpRequest(test.request);
+        hmmac.signHttpRequest(req, credentials.key, credentials.secret);
 
         // console.log(hmmac._lastCanonicalRequest);
 

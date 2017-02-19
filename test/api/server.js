@@ -1,10 +1,3 @@
-/*
- * hmmac
- * https://github.com/cmawhorter/hmmac
- *
- * Copyright (c) 2014 Cory Mawhorter
- * Licensed under the MIT license.
- */
 
 var restify = require('restify');
 
