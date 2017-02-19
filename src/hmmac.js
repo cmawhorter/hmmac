@@ -70,7 +70,7 @@ export default class Hmmac {
   verify(req, callback) {
     let validationError = this._validate(req);
     if (validationError) return ensureAsync(callback, validationError);
-    let auth = this.scheme.parse(req.getHeader(this._AHN), this.options);
+    let auth = this.scheme.parse(req.getHeader(this._AHN));
     if (!auth) return ensureAsync(callback, new Error('authorization error; header missing or could not be parsed'));
     this.provider(auth.key, (err, key, secret) => {
       if (err) return callback(err);
@@ -85,7 +85,7 @@ export default class Hmmac {
   }
 
   getSignature(req, key, secret) {
-    return this.scheme.build(req, key, secret, this.options);
+    return this.scheme.format(req, key, secret);
   }
 
   getSignatureForHttpRequest(httpReq, key, secret) {

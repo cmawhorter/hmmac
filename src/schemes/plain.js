@@ -1,8 +1,8 @@
 import BaseScheme from './_base.js';
 
 export default class PlainScheme extends BaseScheme {
-  constructor() {
-    super();
+  constructor(algorithm, encoding) {
+    super(algorithm, encoding);
   }
 
   _headersSignedInRequest(req) {
@@ -10,8 +10,8 @@ export default class PlainScheme extends BaseScheme {
   }
 
   _signedHeaders(req) {
-    let requestSignedHeaders = this._headersSignedInRequest(req);
-    let signedHeaders = req.getSignedHeaders();
+    let requestSignedHeaders  = this._headersSignedInRequest(req);
+    let signedHeaders         = req.getSignedHeaders();
     signedHeaders.sort();
     return signedHeaders;
   }
@@ -24,35 +24,33 @@ export default class PlainScheme extends BaseScheme {
     });
   }
 
-  message(req, options) {
-    let signedHeaders     = this._signedHeaders(req);
-    let canonicalHeaders  = this._canonicalHeadersForRequest(req, signedHeaders);
+  buildMessage(req) {
+    let signedHeaders       = this._signedHeaders(req);
+    let canonicalHeaders    = this._canonicalHeadersForRequest(req, signedHeaders);
     return [
       req.method,
       req.path,
       req.query,
       ...canonicalHeaders,
+      '', // new line after headers
       signedHeaders.join(';'),
-      this._hash(req.body, 'hex'),
+      this.hash(req.body, 'hex'),
     ].join('\n');
   }
 
-  parse(authorizationHeaderValue, options) {
+  signMessage(message, key, secret) {
+    return this.hmac(secret, message);
+  }
+
+  parse(authorizationHeaderValue) {
     let [serviceLabel, credentialTokens] = authorizationHeaderValue.split(/\s+/);
     let [key, signature] = credentialTokens.split(':');
     return { serviceLabel, key, signature };
   }
 
-  build(req, key, secret, options) {
-    var signature = 'TODO:';
+  format(req, key, secret) {
+    let message           = this.buildMessage(req);
+    let signature         = this.signMessage(message, secret);
     return `${this.serviceLabelPrefixed}${key}:${signature}`;
   }
 }
-
-// ?
-  // sign: function(req, credentials) {
-  //   if (this.config.debug) this._lastRequest = req;
-  //   var message = this.config.scheme.buildMessageToSign.call(this, req);
-  //   req.original.headers['x-auth-signedheaders'] = req.signedHeaders.join(';');
-  //   return this._hmac(message, credentials.secret, this.config.signatureEncoding);
-  // }

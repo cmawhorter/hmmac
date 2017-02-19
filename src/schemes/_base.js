@@ -1,8 +1,12 @@
+import { hash as createHash, hmac as createHmac } from '../lib/signing.js';
+
 const SERVICE_LABEL           = 'HMAC';
 const SERVICE_LABEL_SEPARATOR = ' ';
 
 export default class BaseScheme {
-  constructor() {
+  constructor(algorithm, encoding) {
+    this.algorithm  = algorithm || 'sha256';
+    this.encoding   = encoding || 'hex';
   }
 
   get serviceLabel() {
@@ -17,15 +21,27 @@ export default class BaseScheme {
     return `${this.serviceLabel}${this.serviceLabelSeparator}`;
   }
 
-  message(req) {
+  hash(message, encoding) {
+    return createHash(this.algorithm, encoding || this.encoding, message);
+  }
+
+  hmac(key, message, encoding) {
+    return createHmac(this.algorithm, encoding || this.encoding, key, message);
+  }
+
+  buildMessage(req) {
     throw new Error('must inherit');
   }
 
-  parse(headerValue) {
+  signMessage(message, key, secret) {
     throw new Error('must inherit');
   }
 
-  build() {
+  parse(authorizationHeaderValue) {
+    throw new Error('must inherit');
+  }
+
+  format(req, key, secret) {
     throw new Error('must inherit');
   }
 }

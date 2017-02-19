@@ -1,18 +1,18 @@
+import { parse as querystringParse } from 'querystring';
 import BaseScheme from './_base.js';
 
 // AWS Signature Version 4: http://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
 
 export default class Aws4Scheme extends BaseScheme {
-  constructor(options) {
-    super();
+  constructor(algorithm, encoding, options) {
+    super(algorithm, encoding);
     options = options || {};
-    this.algorithm  = options.algorithm;
     this.region     = options.region;
     this.service    = options.service;
   }
 
   get serviceLabel() {
-    return `AWS4-HMAC-${this.algorithm}`;
+    return `AWS4-HMAC-${this.algorithm.toUpperCase()}`;
   }
 
   getAwsISO8601Date(dt) {
@@ -47,52 +47,64 @@ export default class Aws4Scheme extends BaseScheme {
     return req.getHeader('x-amz-date') ? this.convertAwsISO8601DateToStd(req.getHeader('x-amz-date')) : req.getHeader('date');
   }
 
-  message() {
-    req.signedHeaders.sort();
-
-    var CanonicalHeaders = '';
-    for (var i=0; i < req.signedHeaders.length; i++) {
-      var headerKey = req.signedHeaders[i]
-        , v = req.original.headers.hasOwnProperty(headerKey) ? req.original.headers[headerKey] : '';
-      CanonicalHeaders += headerKey.toLowerCase() + ':' + v.trim() + '\n';
-    }
-
-    var body = this._body(req);
-    var path = typeof req.original.path == 'function' ? req.original.path() : req.original.path || req.original.url;
-    var query = typeof req.original.query == 'function' ? req.original.query() : req.original.query || {};
-    if (typeof query == 'object') query = querystringStringify(query);
-
-    var CanonicalRequest =
-        req.original.method.toUpperCase() + '\n' +
-        path + '\n' +
-        query + '\n' +
-        CanonicalHeaders + '\n' +
-        req.signedHeaders.join(';') + '\n' +
-        this._hash(body, 'hex');
-
-    if (this.config.debug) {
-      this._lastCanonicalRequest = CanonicalRequest;
-      this._lastRequestBody = body;
-    }
-
-    var suppliedDate = getHeaderDate(req.original.headers);
-    var CredentialScope = [this.getCredentialDate(suppliedDate), this.region, this.service, 'aws4_request'].join('/');
-    var HashedCanonicalRequest = this._hash(CanonicalRequest, 'hex');
-    var StringToSign  =  [
-        'AWS4-HMAC-' + this.config.algorithm.toUpperCase(),
-        getAwsISO8601Date(suppliedDate),
-        CredentialScope,
-        HashedCanonicalRequest
-      ].join('\n');
-
-    if (this.config.debug) {
-      this._lastStringToSign = StringToSign;
-    }
-
-    return StringToSign;
+  _headersSignedInRequest(req) {
+    return (req.getHeader('x-auth-signedheaders') || '').toLowerCase().split(/\s*\;\s*/);
   }
 
-  parse(authorizationHeaderValue, options) {
+  _signedHeaders(req) {
+    let requestSignedHeaders  = this._headersSignedInRequest(req);
+    let signedHeaders         = req.getSignedHeaders();
+    signedHeaders.sort();
+    return signedHeaders;
+  }
+
+  _canonicalHeadersForRequest(req, signedHeaders) {
+    return signedHeaders.map(headerName => {
+      headerName = headerName.toLowerCase();
+      let headerValue = (req.getHeader(headerName) || '').trim();
+      return `${headerName}:${headerValue}`;
+    });
+  }
+
+  buildMessage(req) {
+    let signedHeaders           = this._signedHeaders(req);
+    let canonicalHeaders        = this._canonicalHeadersForRequest(req, signedHeaders);
+    let canonicalRequest        = [
+      req.method,
+      req.path,
+      req.query,
+      ...canonicalHeaders,
+      '', // new line after headers
+      signedHeaders.join(';'),
+      this.hash(req.body, 'hex'),
+    ].join('\n');
+    let suppliedDate            = this.getHeaderDate(req);
+    let credentialScope         = [this.getCredentialDate(suppliedDate), this.region, this.service, 'aws4_request'].join('/');
+    let hashedCanonicalRequest  = this.hash(canonicalRequest, 'hex');
+    return [
+      this.serviceLabel,
+      this.getAwsISO8601Date(suppliedDate),
+      credentialScope,
+      hashedCanonicalRequest
+    ].join('\n');
+  }
+
+  signMessage(message, key, secret) {
+    let headerDate        = this.getHeaderDate(req);
+    let query             = querystringParse(req.query || '');
+    // if both query date and header date are supplied they should match exactly
+    if ('x-amz-date' in query && headerDate && query['x-amz-date'] !== headerDate) {
+      return null;
+    }
+    let suppliedDate      = query['x-amz-date'] || headerDate;
+    let kDate             = this.hmac(this.getCredentialDate(suppliedDate), 'AWS4' + credentials.secret, 'binary')
+    let kRegion           = this.hmac(this.config.schemeConfig.region || _defRegion, kDate, 'binary')
+    let kService          = this.hmac(this.config.schemeConfig.service || _defService, kRegion, 'binary')
+    let kSigning          = this.hmac('aws4_request', kService, 'binary');
+    return this.hmac(kSigning, message);
+  }
+
+  parse(authorizationHeaderValue) {
     // AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-amz-date, Signature=ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c
     let [serviceLabel,]         = authorizationHeaderValue.split(/\s+/, 1);
     let rawSignatureProperties  = authorizationHeaderValue.substr(serviceLabel.length).split(/,\s*/).map(signatureProperty => {
@@ -107,7 +119,7 @@ export default class Aws4Scheme extends BaseScheme {
     return { serviceLabel, key, signature };
   }
 
-  build(req, key, secret, options) {
+  format(req, key, secret) {
     var suppliedDate = this.getHeaderDate(req);
     var signedHeaders = [];
     var credential = [
@@ -121,29 +133,3 @@ export default class Aws4Scheme extends BaseScheme {
     return `${this.serviceLabelPrefixed} Credential=${credential}, SignedHeaders=${signedHeaders.join(';')}, Signature=${signature}`;
   }
 }
-
-  // sign: function(req, credentials) {
-  //   if (this.config.debug) this._lastRequest = req;
-  //   if (typeof this.config.schemeConfig == 'undefined') this.config.schemeConfig = {};
-
-  //   var headerDate = getHeaderDate(req.original.headers);
-  //   var query = typeof req.original.query === 'function' ? req.original.query() : req.original.query || {};
-  //   if (typeof query === 'string') {
-  //     query = querystringParse(query);
-  //   }
-
-
-  //   // if both query date and header date are supplied they should match exactly
-  //   if ('x-amz-date' in query && headerDate && query['x-amz-date'] !== headerDate) {
-  //     return null;
-  //   }
-
-  //   var suppliedDate = query['x-amz-date'] || headerDate;
-  //   var kDate = this._hmac(getCredentialDate(suppliedDate), 'AWS4' + credentials.secret, 'binary')
-  //     , kRegion = this._hmac(this.config.schemeConfig.region || _defRegion, kDate, 'binary')
-  //     , kService = this._hmac(this.config.schemeConfig.service || _defService, kRegion, 'binary')
-  //     , kSigning = this._hmac('aws4_request', kService, 'binary');
-
-  //   var message = this.config.scheme.buildMessageToSign.call(this, req);
-  //   return this._hmac(message, kSigning, this.config.signatureEncoding);
-  // }
