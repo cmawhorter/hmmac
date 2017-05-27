@@ -3,6 +3,8 @@ import BaseScheme from './_base.js';
 
 // AWS Signature Version 4: http://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
 
+const BINARY = 'binary';
+
 export default class Aws4Scheme extends BaseScheme {
   constructor(algorithm, encoding, options) {
     super(algorithm, encoding);
@@ -97,10 +99,10 @@ export default class Aws4Scheme extends BaseScheme {
       return null;
     }
     let suppliedDate      = query['x-amz-date'] || headerDate;
-    let kDate             = this.hmac(this.getCredentialDate(suppliedDate), 'AWS4' + credentials.secret, 'binary')
-    let kRegion           = this.hmac(this.config.schemeConfig.region || _defRegion, kDate, 'binary')
-    let kService          = this.hmac(this.config.schemeConfig.service || _defService, kRegion, 'binary')
-    let kSigning          = this.hmac('aws4_request', kService, 'binary');
+    let kDate             = this.hmac(this.getCredentialDate(suppliedDate), 'AWS4' + credentials.secret, BINARY)
+    let kRegion           = this.hmac(this.config.schemeConfig.region || _defRegion, kDate, BINARY)
+    let kService          = this.hmac(this.config.schemeConfig.service || _defService, kRegion, BINARY)
+    let kSigning          = this.hmac('aws4_request', kService, BINARY);
     return this.hmac(kSigning, message);
   }
 
@@ -116,20 +118,20 @@ export default class Aws4Scheme extends BaseScheme {
     }
     let key                     = signatureProperties['credential'].split('/')[0];
     let signature               = signatureProperties['signature'];
-    return { serviceLabel, key, signature };
+    return { serviceLabel, key, signature, aws: signatureProperties };
   }
 
   format(req, key, secret) {
-    var suppliedDate = this.getHeaderDate(req);
-    var signedHeaders = [];
-    var credential = [
+    let suppliedDate      = this.getHeaderDate(req);
+    let signedHeaders     = [];
+    let credential        = [
       key,
       this.getCredentialDate(suppliedDate),
       this.region,
       this.service,
       'aws4_request'
     ].join('/');
-    var signature = 'TODO:';
+    let signature         = this.signMessage(credential, secret);
     return `${this.serviceLabelPrefixed} Credential=${credential}, SignedHeaders=${signedHeaders.join(';')}, Signature=${signature}`;
   }
 }

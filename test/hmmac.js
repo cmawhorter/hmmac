@@ -1,24 +1,18 @@
-var fs = require('fs')
-  , assert = require('assert');
+'use strict';
 
-var HMMAC = require('../src/main.js');
-var Hmmac = HMMAC.Hmmac;
+const Hmmac = require('../src/hmmac.js').default;
 
-var mocks = require('./lib/mocks');
+const mocks = require('./lib/mocks.js');
 
-var noop = function(){};
+const noop = function(){};
 
 describe('Hmmac', function() {
-
-  it('should instantiate a new Hmmac object', function() {
-    var hmmac = new Hmmac();
-    assert.strictEqual(true, hmmac instanceof Hmmac);
-  });
-
-  it('should accept config options', function() {
-    var hmmac = new Hmmac(null, null, { algorithm: 'not-real' });
-    assert.equal(hmmac.options.algorithm, 'not-real');
-  });
+  // it('should instantiate a new Hmmac object', function() {
+  //   assert.doesNotThrow(() => new Hmmac());
+  // });
+  // it('should accept config options', function() {
+  //   expect(new Hmmac(null, null, { algorithm: 'not-real' }).scheme.algorithm).toEqual('not-real');
+  // });
 
   // TODO: this is getting moved to scheme base
 
