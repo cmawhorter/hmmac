@@ -63,7 +63,7 @@ describe('node aws-sdk', function() {
     var app = express();
     var hmmac = new Hmmac({
       scheme: Hmmac.schemes.load('aws4'),
-      acceptableDateSkew: false,
+      acceptableDateSkew: 600,
       // debug: 3,
       schemeConfig: {
         region: 's3box',
