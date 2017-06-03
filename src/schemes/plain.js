@@ -1,19 +1,27 @@
-import BaseScheme from './_base.js';
+import HmmacSigningScheme from './_base.js';
+import Message from '../lib/message.js';
 
-export default class PlainScheme extends BaseScheme {
-  constructor(algorithm, encoding) {
-    super(algorithm, encoding);
+export default class PlainScheme extends HmmacSigningScheme {
+  constructor(options) {
+    options = options || {};
+    super(options.algorithm || 'sha256', options.encoding || Message.HEX);
   }
 
-  _headersSignedInRequest(req) {
-    return (req.getHeader('x-auth-signedheaders') || '').toLowerCase().split(/\s*\;\s*/);
-  }
-
-  _signedHeaders(req) {
-    let requestSignedHeaders  = this._headersSignedInRequest(req);
-    let signedHeaders         = req.getSignedHeaders();
-    signedHeaders.sort();
-    return signedHeaders;
+  _validate(req, signedHeaders) {
+    let containsAllSignedHeaders = true;
+    for (let headerName of signedHeaders) {
+      containsAllSignedHeaders = containsAllSignedHeaders && req.hasHeader(headerName);
+    }
+    let validationErrors = [];
+    if (!containsAllSignedHeaders) {
+      validationErrors.push(`invalid request; these headers must be signed: ${signedHeaders.join(', ')}`);
+    }
+    if (validationErrors.length) {
+      return new Error('validation failed; ' + validationErrors.join('\n'));
+    }
+    else {
+      return null;
+    }
   }
 
   _canonicalHeadersForRequest(req, signedHeaders) {
@@ -24,10 +32,9 @@ export default class PlainScheme extends BaseScheme {
     });
   }
 
-  buildMessage(req) {
-    let signedHeaders       = this._signedHeaders(req);
-    let canonicalHeaders    = this._canonicalHeadersForRequest(req, signedHeaders);
-    return [
+  _buildMessage(req, signedHeaders) {
+    let canonicalHeaders  = this._canonicalHeadersForRequest(req, signedHeaders);
+    let message = new Message(this.algorithm, this.encoding, [
       req.method,
       req.path,
       req.query,
@@ -35,22 +42,23 @@ export default class PlainScheme extends BaseScheme {
       '', // new line after headers
       signedHeaders.join(';'),
       this.hash(req.body, 'hex'),
-    ].join('\n');
+    ].join('\n'));
+    return message;
   }
 
-  signMessage(message, key, secret) {
-    return this.hmac(secret, message);
+  _signMessage(message, key, secret) {
+    return message.sign(secret);
   }
 
-  parse(authorizationHeaderValue) {
+  _parseHeader(authorizationHeaderValue) {
     let [serviceLabel, credentialTokens] = authorizationHeaderValue.split(/\s+/);
     let [key, signature] = credentialTokens.split(':');
     return { serviceLabel, key, signature };
   }
 
-  format(req, key, secret) {
-    let message           = this.buildMessage(req);
-    let signature         = this.signMessage(message, secret);
-    return `${this.serviceLabelPrefixed}${key}:${signature}`;
+  _format(req, signedHeaders, key, secret) {
+    let message   = this.buildMessage(req, signedHeaders);
+    let signature = this.signMessage(message, key, secret);
+    return `${this.prefix}${key}:${signature}`;
   }
 }

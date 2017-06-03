@@ -1,16 +1,35 @@
 import { parse as querystringParse } from 'querystring';
-import BaseScheme from './_base.js';
+
+import HmmacSigningScheme from './_base.js';
+import Message from '../lib/message.js';
 
 // AWS Signature Version 4: http://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
 
 const BINARY = 'binary';
 
-export default class Aws4Scheme extends BaseScheme {
-  constructor(algorithm, encoding, options) {
-    super(algorithm, encoding);
+export default class Aws4Scheme extends HmmacSigningScheme {
+  constructor(options) {
     options = options || {};
+    super(options.algorithm || 'sha256', options.encoding || Message.HEX);
     this.region     = options.region;
     this.service    = options.service;
+  }
+
+  _validate(req, signedHeaders) {
+    let containsAllSignedHeaders = true;
+    for (let headerName of signedHeaders) {
+      containsAllSignedHeaders = containsAllSignedHeaders && req.hasHeader(headerName);
+    }
+    let validationErrors = [];
+    if (!containsAllSignedHeaders) {
+      validationErrors.push(`invalid request; these headers must be signed: ${signedHeaders.join(', ')}`);
+    }
+    if (validationErrors.length) {
+      return new Error('validation failed; ' + validationErrors.join('\n'));
+    }
+    else {
+      return null;
+    }
   }
 
   get serviceLabel() {
@@ -49,17 +68,6 @@ export default class Aws4Scheme extends BaseScheme {
     return req.getHeader('x-amz-date') ? this.convertAwsISO8601DateToStd(req.getHeader('x-amz-date')) : req.getHeader('date');
   }
 
-  _headersSignedInRequest(req) {
-    return (req.getHeader('x-auth-signedheaders') || '').toLowerCase().split(/\s*\;\s*/);
-  }
-
-  _signedHeaders(req) {
-    let requestSignedHeaders  = this._headersSignedInRequest(req);
-    let signedHeaders         = req.getSignedHeaders();
-    signedHeaders.sort();
-    return signedHeaders;
-  }
-
   _canonicalHeadersForRequest(req, signedHeaders) {
     return signedHeaders.map(headerName => {
       headerName = headerName.toLowerCase();
@@ -68,45 +76,50 @@ export default class Aws4Scheme extends BaseScheme {
     });
   }
 
-  buildMessage(req) {
-    let signedHeaders           = this._signedHeaders(req);
-    let canonicalHeaders        = this._canonicalHeadersForRequest(req, signedHeaders);
-    let canonicalRequest        = [
+  _canonicalRequest(req, signedHeaders) {
+    // console.log('_canonicalRequest', {req, signedHeaders});
+    let canonicalHeaders = this._canonicalHeadersForRequest(req, signedHeaders);
+    return [
       req.method,
-      req.path,
-      req.query,
+      req.pathname,
+      req.query || '',
       ...canonicalHeaders,
       '', // new line after headers
       signedHeaders.join(';'),
-      this.hash(req.body, 'hex'),
-    ].join('\n');
-    let suppliedDate            = this.getHeaderDate(req);
-    let credentialScope         = [this.getCredentialDate(suppliedDate), this.region, this.service, 'aws4_request'].join('/');
-    let hashedCanonicalRequest  = this.hash(canonicalRequest, 'hex');
-    return [
-      this.serviceLabel,
-      this.getAwsISO8601Date(suppliedDate),
-      credentialScope,
-      hashedCanonicalRequest
-    ].join('\n');
+      new Message(this.algorithm, Message.HEX, req.body).hash(),
+    ];
   }
 
-  signMessage(message, key, secret) {
-    let headerDate        = this.getHeaderDate(req);
-    let query             = querystringParse(req.query || '');
+  _buildMessage(req, signedHeaders) {
+    // console.log('_buildMessage', {req, signedHeaders})
+    let canonicalRequest        = this._canonicalRequest(req, signedHeaders).join('\n');
+    let headerDate              = this.getHeaderDate(req);
+    let credentialScope         = [this.getCredentialDate(headerDate), this.region, this.service, 'aws4_request'].join('/');
+    let hashedCanonicalRequest  = new Message(this.algorithm, Message.HEX, canonicalRequest).hash();
+    let query = querystringParse(req.query || '');
     // if both query date and header date are supplied they should match exactly
     if ('x-amz-date' in query && headerDate && query['x-amz-date'] !== headerDate) {
       return null;
     }
-    let suppliedDate      = query['x-amz-date'] || headerDate;
-    let kDate             = this.hmac(this.getCredentialDate(suppliedDate), 'AWS4' + credentials.secret, BINARY)
-    let kRegion           = this.hmac(this.config.schemeConfig.region || _defRegion, kDate, BINARY)
-    let kService          = this.hmac(this.config.schemeConfig.service || _defService, kRegion, BINARY)
-    let kSigning          = this.hmac('aws4_request', kService, BINARY);
-    return this.hmac(kSigning, message);
+    let message = new Message(this.algorithm, this.encoding, [
+      this.serviceLabel,
+      this.getAwsISO8601Date(headerDate),
+      credentialScope,
+      hashedCanonicalRequest
+    ].join('\n'));
+    message.meta.headerDate     = headerDate;
+    return message;
   }
 
-  parse(authorizationHeaderValue) {
+  _signMessage(message, key, secret) {
+    let kDate             = new Message(this.algorithm, Message.BINARY, message.meta.headerDate).sign('AWS4' + secret);
+    let kRegion           = new Message(this.algorithm, Message.BINARY, this.region).sign(kDate);
+    let kService          = new Message(this.algorithm, Message.BINARY, this.service).sign(kRegion);
+    let kSigning          = new Message(this.algorithm, Message.BINARY, 'aws4_request').sign(kService);
+    return new Message(this.algorithm, Message.HEX, message.toString()).sign(kSigning);
+  }
+
+  _parseHeader(authorizationHeaderValue) {
     // AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-amz-date, Signature=ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c
     let [serviceLabel,]         = authorizationHeaderValue.split(/\s+/, 1);
     let rawSignatureProperties  = authorizationHeaderValue.substr(serviceLabel.length).split(/,\s*/).map(signatureProperty => {
@@ -121,17 +134,21 @@ export default class Aws4Scheme extends BaseScheme {
     return { serviceLabel, key, signature, aws: signatureProperties };
   }
 
-  format(req, key, secret) {
-    let suppliedDate      = this.getHeaderDate(req);
-    let signedHeaders     = [];
-    let credential        = [
+  _buildCredentialString(key, headerDate) {
+    return [
       key,
-      this.getCredentialDate(suppliedDate),
+      this.getCredentialDate(headerDate),
       this.region,
       this.service,
       'aws4_request'
     ].join('/');
-    let signature         = this.signMessage(credential, secret);
-    return `${this.serviceLabelPrefixed} Credential=${credential}, SignedHeaders=${signedHeaders.join(';')}, Signature=${signature}`;
+  }
+
+  _format(req, signedHeaders, key, secret) {
+    let message           = this.buildMessage(req, signedHeaders);
+    let headerDate        = message.meta.headerDate;
+    let credential        = this._buildCredentialString(key, headerDate);
+    let signature         = this.signMessage(message, credential, secret);
+    return `${this.prefix}Credential=${credential}, SignedHeaders=${signedHeaders.join(';')}, Signature=${signature}`;
   }
 }

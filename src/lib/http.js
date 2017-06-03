@@ -1,13 +1,13 @@
-import { parse as parseUrl } from 'url';
+import { parse as parseUrl, format as formatUrl } from 'url';
 import { replace as replaceHeaderInCollection, find as findHeaderByName, has as hasHeaderName, fromHash as toHeaderCollection, append as appendHeaderToCollection } from 'http-header-collection';
 
 export function normalizeRequest(req, body) {
   let headers = parseHeaders(req);
-  let url = 'url' in req ? req.url : `${req.protocol}//${req.hostname}${req.path}`;
+  let url = 'url' in req ? req.url : formatUrl(req);
   return Object.assign({
     method:         req.method.toUpperCase(),
     url:            url,
-    body:           void 0 !== body ? body : parseBody(req),
+    body:           undefined !== body ? body : parseBody(req),
     getHeader: (name) => {
       let values = findHeaderByName(headers, name);
       return values ? values[0] : null;

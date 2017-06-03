@@ -1,47 +1,65 @@
-import { hash as createHash, hmac as createHmac } from '../lib/signing.js';
-
-const SERVICE_LABEL           = 'HMAC';
-const SERVICE_LABEL_SEPARATOR = ' ';
-
-export default class BaseScheme {
+export default class HmmacSigningScheme {
   constructor(algorithm, encoding) {
-    this.algorithm  = algorithm || 'sha256';
-    this.encoding   = encoding || 'hex';
+    this.algorithm  = algorithm;
+    this.encoding   = encoding;
   }
 
   get serviceLabel() {
-    return SERVICE_LABEL;
+    return 'HMAC';
   }
 
   get serviceLabelSeparator() {
-    return SERVICE_LABEL_SEPARATOR;
+    return String.fromCharCode(32);
   }
 
-  get serviceLabelPrefixed() {
+  get prefix() {
     return `${this.serviceLabel}${this.serviceLabelSeparator}`;
   }
 
-  hash(message, encoding) {
-    return createHash(this.algorithm, encoding || this.encoding, message);
+  _validate(req, signedHeaders) {
+    throw new Error('must inherit');
   }
 
-  hmac(key, message, encoding) {
-    return createHmac(this.algorithm, encoding || this.encoding, key, message);
+  validate(req, signedHeaders) {
+    return this._validate(req, signedHeaders);
   }
 
-  buildMessage(req) {
+  _buildMessage(req, signedHeaders) {
+    throw new Error('must inherit');
+  }
+
+  buildMessage(req, signedHeaders) {
+    return this._buildMessage(req, signedHeaders);
+  }
+
+  _signMessage(message, key, secret) {
     throw new Error('must inherit');
   }
 
   signMessage(message, key, secret) {
+    return this._signMessage(message, key, secret);
+  }
+
+  validHeader(authorizationHeaderValue, strict) {
+    let prefix = strict ? this.prefix : this.prefix.toLowerCase();
+    let value  = strict ? authorizationHeaderValue : authorizationHeaderValue.toLowerCase();
+    return 0 === authorizationHeaderValue.indexOf(prefix);
+  }
+
+  _parseHeader(authorizationHeaderValue) {
     throw new Error('must inherit');
   }
 
-  parse(authorizationHeaderValue) {
+  parseHeader(authorizationHeaderValue) {
+    if (!this.validHeader(authorizationHeaderValue)) return null;
+    return this._parseHeader(authorizationHeaderValue);
+  }
+
+  _format(req, signedHeaders, key, secret) {
     throw new Error('must inherit');
   }
 
-  format(req, key, secret) {
-    throw new Error('must inherit');
+  format(req, signedHeaders, key, secret) {
+    return this._format(req, signedHeaders, key, secret);
   }
 }

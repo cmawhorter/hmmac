@@ -20,31 +20,6 @@ const loadFile = (f) => {
   return normalizeLineEndings(fs.readFileSync(__dirname + '/aws/' + f).toString());
 };
 
-const loadTest = (k) => {
-  // <file-name>.req—the web request to be signed.
-  // <file-name>.creq—the resulting canonical request.
-  // <file-name>.sts—the resulting string to sign.
-  // <file-name>.authz—the authorization header.
-  // <file-name>.sreq— the signed request.
-  let req             = buildRequestObj(loadFile(k + '.req'))
-  // let parsedAuth      = parseAuthorization(hmmac, req, loadFile(k + '.authz'))
-  let canonical       = loadFile(k + '.creq')
-  let canonicalLines  = canonical.split('\n');
-  console.log('loadTest', { req, parsedAuth, canonical, canonicalLines });
-  return {
-    request:            req,
-    canonical:          canonical,
-    signedHeaders:      canonicalLines[canonicalLines.length - 2].split(';'),
-    sign:               loadFile(k + '.sts'),
-    // auth:               parsedAuth,
-    signed:             loadFile(k + '.sreq'),
-    // scope: {
-    //   region:           parsedAuth.region,
-    //   service:          parsedAuth.service,
-    // }
-  };
-};
-
 const buildRequestObj = (strRequest) => {
   // POST / http/1.1
   // Content-Type:application/x-www-form-urlencoded
@@ -53,34 +28,32 @@ const buildRequestObj = (strRequest) => {
   //
   // foo=bar
 
-  let req     = {};
-  let lines   = strRequest.split('\n');
-  let line1   = lines.shift().split(/\s+/);
+  let req = {};
+
+  let lines = strRequest.split('\n');
+  let [method,fullPath] = lines[0].split(/\s/);
 
   req.headers = {};
-  req.method  = line1[0].trim();
+  req.method  = method;
+  req.protocol = 'http:';
 
-  let tmppath = line1[1].trim();
-  let query   = ''
-  let path;
-  if (tmppath.indexOf('?') > -1) {
-    path  = tmppath.split('?')[0];
-    query = tmppath.split('?')[1];
+  let path, query
+  if (fullPath.indexOf('?') > -1) {
+    [path,query] = fullPath.split('?');
   }
   else {
-    path = tmppath;
+    path = fullPath;
+    query = '';
   }
   // request.version = line1[2].trim();
 
-  req.path    = path;
+  req.pathname = path;
   req.query   = querystring.parse(query);
 
   req.body    = '';
-
   let startBody = false;
-  for (let i=0; i < lines.length; i++) {
+  for (let i=1; i < lines.length; i++) {
     let line = lines[i];
-
     if (!startBody) {
       if (line.trim().length === 0) {
         startBody = true;
@@ -88,8 +61,7 @@ const buildRequestObj = (strRequest) => {
       else {
         let parts       = line.split(':', 2);
         let headerKey   = parts[0].trim().toLowerCase();
-        let headerValue = line.substring(headerKey.length + 1).trim();
-
+        let headerValue = line.substr(line.indexOf(':') + 1);
         req.headers[headerKey] = headerValue;
       }
     }
@@ -108,14 +80,6 @@ const buildRequestObj = (strRequest) => {
   return req;
 };
 
-const parseAuthorization = (hmmac, req, strAuth) => {
-  // AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=content-type;date;host, Signature=5a15b22cf462f047318703b92e6f4f38884e4a7ab7b1d6426ca46a8bd1c26cbc
-  req.headers['authorization'] = strAuth;
-  let parsedAuth = aws4Scheme.parse(strAuth, hmmac.options);
-  let [awsKey,dt,region,service,label] = parsedAuth.aws.credential.split('/');
-  Object.assign(parsedAuth, { region, service });
-  return parsedAuth;
-};
 
 const compareStrings = (aws, hmmac, enforce) => {
   let matches = aws === hmmac;
@@ -158,32 +122,41 @@ aws_tests.forEach(f => {
 
 describe('Hmmac', function() {
   describe('AWS4 Test Suite', function() {
-    testkeys.forEach(fKey => {
+    testkeys
+    // .slice(0,1)
+    .forEach(fKey => {
       it('should match the signature in ' + fKey, function() {
-        let test = loadTest(fKey);
+        // <file-name>.req—the web request to be signed.
+        // <file-name>.creq—the resulting canonical request.
+        // <file-name>.sts—the resulting string to sign.
+        // <file-name>.authz—the authorization header.
+        // <file-name>.sreq— the signed request.
+        let httpReq                 = buildRequestObj(loadFile(fKey + '.req'))
+        let expectedCanonicalLines  = loadFile(fKey + '.creq').split('\n');
+        let expectedMessage         = loadFile(fKey + '.sts');
+        let expectedHeaderValue     = loadFile(fKey + '.authz');
 
-        // algorithm, encoding, options
-        let aws4Scheme = new HMMAC.Aws4Scheme(algorithm, encoding, options);
-        let hmmac = new Hmmac(aws4Scheme, (key, callback) => callback(null, credentials.key, credentials.secret));
+        // AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=content-type;date;host, Signature=5a15b22cf462f047318703b92e6f4f38884e4a7ab7b1d6426ca46a8bd1c26cbc
+        let credentialChunks      = expectedHeaderValue.split('/');
+        let [,dt,region,service]  = credentialChunks;
+        let signedHeaders         = expectedCanonicalLines[expectedCanonicalLines.length - 2].split(';');
 
-        hmmac.options.signedHeaders = test.signedHeaders;
-        // console.log(test.request.headers);
+        // console.log('hmmac.signedHeaders', signedHeaders);
 
-        let expectedAuthorizationHeader = test.request.headers['authorization'];
-        test.request.headers['authorization'] = null;
+        let aws4Scheme = new HMMAC.Aws4Scheme({ region, service });
+        let hmmac = new Hmmac(aws4Scheme, (key, callback) => callback(null, credentials.key, credentials.secret), {
+          signedHeaders,
+        });
 
-        // verify test request no longer contains an auth header
-        assert.strictEqual(test.request.headers['authorization'], null);
+        let normalizeHttpRequest = hmmac.normalizeHttpRequest(httpReq);
 
-        hmmac.config.schemeConfig = test.scope;
-        let req = hmmac.normalizeHttpRequest(test.request);
-        hmmac.signHttpRequest(req, credentials.key, credentials.secret);
+        hmmac.signHttpRequest(httpReq, credentials.key, credentials.secret);
 
-        // console.log(hmmac._lastCanonicalRequest);
-
-        assert.equal(hmmac._lastCanonicalRequest, test.canonical);
-        assert.equal(hmmac._lastStringToSign, test.sign);
-        assert.equal(test.request.headers['authorization'], expectedAuthorizationHeader);
+        let canonicalRequest = aws4Scheme._canonicalRequest(normalizeHttpRequest, hmmac.options.signedHeaders);
+        // console.log(JSON.stringify({ canonicalRequest, expectedCanonicalLines }, null, 2));
+        expect(canonicalRequest).toEqual(expectedCanonicalLines, 'canonical lines did not match');
+        expect(aws4Scheme.buildMessage(normalizeHttpRequest, hmmac.options.signedHeaders).toString()).toEqual(expectedMessage, 'message to sign did not match');
+        expect(httpReq.headers['authorization']).toEqual(expectedHeaderValue, 'auth header result did not match');
       });
     });
 

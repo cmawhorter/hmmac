@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "build": "rollup -c",
-    "test": "mocha -r ./test/lib/helper --compilers js:babel-register test"
+    "test": "mocha -r ./test/lib/helper --compilers js:babel-register test",
+    "test-aws": "mocha -r ./test/lib/helper --compilers js:babel-register test/aws4-test-suite.js"
   },
   "homepage": "https://github.com/cmawhorter/hmmac",
   "author": {

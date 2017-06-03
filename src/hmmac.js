@@ -2,13 +2,20 @@ import { normalizeRequest as normalizeHttpRequest } from './lib/http.js';
 import { isNotExpired } from './lib/time.js';
 import slowEquals from './lib/slow-equals.js';
 import ensureAsync from './lib/ensure-async.js';
-import defaults from './defaults.js';
 
 export default class Hmmac {
   constructor(scheme, provider, options) {
-    this.provider = provider;
+    if (!scheme) throw new Error('scheme is required');
+    if (!provider) throw new Error('provider is required');
     this.scheme   = scheme;
-    this.options  = Object.assign({}, defaults, options || {});
+    this.provider = provider;
+    this.options  = Object.assign({
+      authorizationHeaderName:        'authorization',
+      // in seconds, def 15 minutes. only done if date is signed
+      acceptableDateSkew:             900,
+      signedHeaders:                  [ 'host', 'content-type', 'date' ],
+    }, options || {});
+    this.options.signedHeaders.sort();
   }
 
   get _AHN() {
@@ -26,39 +33,9 @@ export default class Hmmac {
     return normalizeHttpRequest(httpReq, body);
   }
 
-  requestContainsAllSignedHeaders(req) {
-    let allThere = true;
-    for (let headerName of this.options.signedHeaders) {
-      allThere = allThere && req.hasHeader(headerName);
-    }
-    return allThere;
-  }
-
   requestHasValidDate(req) {
     let isDateEnforced = this.options.signedHeaders.indexOf('date') > -1;
     return isDateEnforced ? isNotExpired(req.getHeader('date'), this.options.acceptableDateSkew) : true;
-  }
-
-  // requestIsNotExpired(req) {
-  //   let isDateEnforced = this.options.signedHeaders.indexOf('date') > -1;
-  //   return isDateEnforced ? isNotExpired(req.getHeader('date'), this.options.acceptableDateSkew) : true;
-  // }
-
-  _validate(req) {
-    let validationErrors = [];
-    // TODO: do we want this?  it results in failed tests.  but is that the correct behavior?
-    // if (!this.requestContainsAllSignedHeaders(req)) {
-    //   validationErrors.push(`invalid request; these headers must be signed: ${this.options.signedHeaders.join(', ')}`);
-    // }
-    if (!this.requestHasValidDate(req)) {
-      validationErrors.push(`invalid date; outside acceptable skew of ${this.options.acceptableDateSkew}s`);
-    }
-    let err = null;
-    if (validationErrors.length) {
-      err = new Error('validation failed');
-      err.validationErrors = validationErrors;
-    }
-    return err;
   }
 
   _verify(req, providedSignature, key, secret) {
@@ -68,10 +45,18 @@ export default class Hmmac {
   }
 
   verify(req, callback) {
-    let validationError = this._validate(req);
-    if (validationError) return ensureAsync(callback, validationError);
-    let auth = this.scheme.parse(req.getHeader(this._AHN));
-    if (!auth) return ensureAsync(callback, new Error('authorization error; header missing or could not be parsed'));
+    let authorizationHeaderValue = req.getHeader(this._AHN);
+    if (!this.scheme.validHeader(authorizationHeaderValue)) {
+      return ensureAsync(callback, new Error('authorization error; header missing or could not be parsed'));
+    }
+    let auth = this.scheme.parseHeader(authorizationHeaderValue);
+    if (!this.requestHasValidDate(req)) {
+      return ensureAsync(callback, new Error(`invalid date; outside acceptable skew of ${this.options.acceptableDateSkew}s`));
+    }
+    let validationError = this.scheme.validate(req, this.options.signedHeaders);
+    if (validationError) {
+      return ensureAsync(callback, validationError);
+    }
     this.provider(auth.key, (err, key, secret) => {
       if (err) return callback(err);
       if (!key || !secret) return callback(new Error('credentials not provided'));
@@ -85,7 +70,7 @@ export default class Hmmac {
   }
 
   getSignature(req, key, secret) {
-    return this.scheme.format(req, key, secret);
+    return this.scheme.format(req, this.options.signedHeaders, key, secret);
   }
 
   getSignatureForHttpRequest(httpReq, key, secret) {

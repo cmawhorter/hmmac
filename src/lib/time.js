@@ -1,6 +1,8 @@
 export function tryParseDate(dateString) {
   try {
-    return new Date(dateString);
+    let date = new Date(dateString);
+    if (isNaN(date)) return null;
+    return date;
   }
   catch (err) {
     return null;
@@ -12,14 +14,14 @@ export function parseDateToTimestamp(dateString, defaultValue) {
   return dt ? dt.getTime() : defaultValue;
 }
 
-export function isNotExpired(headerDateValue, acceptableDateSkew) {
-  if (!acceptableDateSkew) {
+export function isNotExpired(headerDateValue, acceptableDateSkew, relativeTime) {
+  if (false === acceptableDateSkew || acceptableDateSkew < 0) {
     return true;
   }
-  let skewInMilli = acceptableDateSkew * 1000;
-  let now         = Date.now();
+  let skewInMilli = 0 === acceptableDateSkew ? 1000 : acceptableDateSkew * 1000;
+  let now         = relativeTime || Date.now();
   let then        = parseDateToTimestamp(headerDateValue, 0);
   let diff        = Math.abs(now - then); // Math.abs because skew is +/- and not an expiration
-  return diff < skewInMilli;
+  return diff <= skewInMilli;
 };
 
