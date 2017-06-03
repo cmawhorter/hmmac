@@ -1,7 +1,7 @@
 {
   "name": "hmmac",
   "description": "Easy HMAC connect/express middleware",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "homepage": "https://github.com/cmawhorter/hmmac",
   "author": {
     "name": "Cory Mawhorter",
