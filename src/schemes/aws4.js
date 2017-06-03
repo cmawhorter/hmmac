@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { parse as querystringParse } from 'querystring';
 
 import HmmacSigningScheme from './_base.js';
@@ -10,7 +11,7 @@ const BINARY = 'binary';
 export default class Aws4Scheme extends HmmacSigningScheme {
   constructor(options) {
     options = options || {};
-    super(options.algorithm || 'sha256', options.encoding || Message.HEX);
+    super('sha256', Message.HEX);
     this.region     = options.region;
     this.service    = options.service;
   }
@@ -112,11 +113,25 @@ export default class Aws4Scheme extends HmmacSigningScheme {
   }
 
   _signMessage(message, key, secret) {
-    let kDate             = new Message(this.algorithm, Message.BINARY, message.meta.headerDate).sign('AWS4' + secret);
+    let credDate          = this.getCredentialDate(message.meta.headerDate);
+    let kDate             = new Message(this.algorithm, Message.BINARY, credDate).sign('AWS4' + secret);
     let kRegion           = new Message(this.algorithm, Message.BINARY, this.region).sign(kDate);
     let kService          = new Message(this.algorithm, Message.BINARY, this.service).sign(kRegion);
     let kSigning          = new Message(this.algorithm, Message.BINARY, 'aws4_request').sign(kService);
-    return new Message(this.algorithm, Message.HEX, message.toString()).sign(kSigning);
+    console.log('_signMessage', {
+      message,
+      key,
+      secret,
+      credDate,
+      headerDate: message.meta.headerDate,
+      region:     this.region,
+      service:    this.service,
+      kDate,
+      kRegion,
+      kService,
+      kSigning,
+    })
+    return new Message(this.algorithm, this.encoding, message.toString()).sign(kSigning);
   }
 
   _parseHeader(authorizationHeaderValue) {
@@ -148,7 +163,7 @@ export default class Aws4Scheme extends HmmacSigningScheme {
     let message           = this.buildMessage(req, signedHeaders);
     let headerDate        = message.meta.headerDate;
     let credential        = this._buildCredentialString(key, headerDate);
-    let signature         = this.signMessage(message, credential, secret);
+    let signature         = this.signMessage(message, key, secret);
     return `${this.prefix}Credential=${credential}, SignedHeaders=${signedHeaders.join(';')}, Signature=${signature}`;
   }
 }
