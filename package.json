@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "build": "rollup -c",
-    "test": "mocha -r ./test/lib/helper --compilers js:babel-register test",
-    "test-aws": "mocha -r ./test/lib/helper --compilers js:babel-register test/aws4-test-suite.js"
+    "test": "mocha -r ./test/lib/helper test",
+    "test-aws": "mocha -r ./test/lib/helper test/aws4-test-suite.js"
   },
   "homepage": "https://github.com/cmawhorter/hmmac",
   "author": {
@@ -39,7 +39,6 @@
     "express": "^4.14.1",
     "http-header-collection": "github:cmawhorter/http-header-collection",
     "mocha": "^3.2.0",
-    "reify": "^0.4.9",
     "rollup": "^0.41.1",
     "rollup-plugin-babel": "^2.7.1",
     "rollup-plugin-commonjs": "^7.0.0",
@@ -54,5 +53,11 @@
     "aws",
     "rest",
     "authentication"
-  ]
+  ],
+  "babel": {
+    "ignore": false,
+    "presets": [
+      "es2015"
+    ]
+  }
 }
