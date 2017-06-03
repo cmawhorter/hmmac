@@ -50,6 +50,37 @@ describe('Middleware', function() {
       });
   });
 
+  it('should optionally supply the original request object to credentialProvider (with)', function(done) {
+    var credentialProvider = function(req, key, callback) {
+      assert.strictEqual(3, arguments.length);
+      assert.ok(typeof req === 'object');
+      assert.ok(typeof callback === 'function');
+      done();
+    };
+    var hmmac = new Hmmac({ scheme: Hmmac.schemes.load('aws4'), credentialProvider: credentialProvider })
+      , middleware = Hmmac.middleware(hmmac)
+      , res = mocks.responseEmpty();
+
+      middleware(mocks.aws4.signedRequestFrozen, res, function(err) {
+        assert.ifError(err);
+      });
+  });
+
+  it('should optionally supply the original request object to credentialProvider (without)', function(done) {
+    var credentialProvider = function(key, callback) {
+      assert.strictEqual(2, arguments.length);
+      assert.ok(typeof callback === 'function');
+      done();
+    };
+    var hmmac = new Hmmac({ scheme: Hmmac.schemes.load('aws4'), credentialProvider: credentialProvider })
+      , middleware = Hmmac.middleware(hmmac)
+      , res = mocks.responseEmpty();
+
+      middleware(mocks.aws4.signedRequestFrozen, res, function(err) {
+        assert.ifError(err);
+      });
+  });
+
   it('should take a customResponder and pass it as validate callback');
 });
 
