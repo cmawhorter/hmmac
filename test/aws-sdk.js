@@ -34,7 +34,11 @@ describe('node aws-sdk', function() {
 
     app.use(function (req, res, next) {
       hmmac.validate(req, function(valid) {
-        done(true === valid ? null : new Error('did not validate'));
+        var err = true === valid ? null : new Error('request was VALID when it should have been INVALID');
+        if (err) {
+          hmmac.why();
+        }
+        done(err);
       });
     });
 
@@ -80,7 +84,11 @@ describe('node aws-sdk', function() {
 
     app.use(function (req, res, next) {
       hmmac.validate(req, function(valid) {
-        done(false === valid ? null : new Error('did not validate'));
+        var err = false === valid ? null : new Error('request was INVALID when it should have been VALID');
+        if (err) {
+          hmmac.why();
+        }
+        done(err);
       });
     });
 
