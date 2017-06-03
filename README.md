@@ -1,4 +1,4 @@
-# hmmac (pronounced hammock) [![Build Status](https://secure.travis-ci.org/cmawhorter/hmmac.png)](http://travis-ci.org/cmawhorter/hmmac)
+# hmmac (pronounced hammock) [![Build Status](https://travis-ci.org/cmawhorter/hmmac.svg?branch=master)](http://travis-ci.org/cmawhorter/hmmac)
 
 Flexible HMAC authentication module for express/connect and beyond -- with no external (to nodejs) dependencies.
 
