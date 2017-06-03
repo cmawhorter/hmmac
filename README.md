@@ -8,12 +8,6 @@ It is modeled on AWS request signing and has all the pros/cons of their method.
 
 What is this useful for? Building arbitrary stateless authentication schemes and authorizing against them (usually for use with an API).  i.e. not OAuth or anything else that requires session state.
 
-## About
-
-Version 0.2.0 is 100% new, and no code from v0.1.0 remains.  Despite the 0.2.0 version, this should be considered 0.1.0 in terms of stability.
-
-As of right now, the API should be considered experimental.  I'm hoping to have it stable by 0.2.1.
-
 ## Getting Started
 
 `npm install hmmac`
