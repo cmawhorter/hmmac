@@ -1,5 +1,5 @@
 {
-  "name": "hmmac",
+  "name": "hmmac-es6",
   "description": "Easy HMAC connect/express middleware",
   "version": "0.2.2",
   "homepage": "https://github.com/cmawhorter/hmmac",
