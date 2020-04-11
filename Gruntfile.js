@@ -1,5 +1,4 @@
-module.exports = function (grunt) {
-
+module.exports = (grunt) => {
   grunt.loadNpmTasks('grunt-mocha-test');
 
   grunt.initConfig({
@@ -7,33 +6,33 @@ module.exports = function (grunt) {
     // lint:{
     //   files:['grunt.js', 'lib/**/*.js', 'test/**/*.js', 'spec/**/*_test.js']
     // },
-    jshint:{
-      options:{
-        curly:true,
-        eqeqeq:true,
-        immed:true,
-        latedef:true,
-        newcap:true,
-        noarg:true,
-        sub:true,
-        undef:true,
-        boss:true,
-        eqnull:true,
-        node:true,
-        mocha:true
+    jshint: {
+      options: {
+        curly: true,
+        eqeqeq: true,
+        immed: true,
+        latedef: true,
+        newcap: true,
+        noarg: true,
+        sub: true,
+        undef: true,
+        boss: true,
+        eqnull: true,
+        node: true,
+        mocha: true,
       },
-      globals:{
-        exports:true
-      }
+      globals: {
+        exports: true,
+      },
     },
     mochaTest: {
       test: {
         options: {
-          reporter: 'spec'
+          reporter: 'spec',
         },
-        src: ['test/*.js']
-      }
-    }
+        src: ['test/*.js'],
+      },
+    },
   });
 
   grunt.registerTask('default', 'mochaTest');

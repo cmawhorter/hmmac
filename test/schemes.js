@@ -1,3 +1,6 @@
+/* eslint-disable eslint-comments/disable-enable-pair */
+/* eslint-disable jest/no-disabled-tests */
+/* eslint-disable jest/expect-expect */
 /*
  * hmmac
  * https://github.com/cmawhorter/hmmac
@@ -6,9 +9,6 @@
  * Licensed under the MIT license.
  */
 
-var assert = require('assert');
-
-describe('Hmmac Schemes', function() {
-
+describe('Hmmac Schemes', () => {
   it('should work with json and form encoded');
 });

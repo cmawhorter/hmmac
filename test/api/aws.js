@@ -8,10 +8,9 @@
 
 // This mimics some rudimentary behavior of S3 to allow for automated testing.
 
-var server = require('./server');
+const server = require('./server');
 
-server.get('/s3/:blah', function(req, res, next) {
-
-});
+// eslint-disable-next-line no-unused-vars
+server.get('/s3/:blah', (req, res, next) => {});
 
 server.listen(18080);

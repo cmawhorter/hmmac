@@ -10,30 +10,31 @@
 
 // run node examples/middleware.js
 
-var restify = require('restify');
+// eslint-disable-next-line import/no-extraneous-dependencies
+const restify = require('restify');
 
-var Hmmac = require('../lib/hmmac')
-  , ourFakeDb = require('./lib/credentials');
+const Hmmac = require('../lib/hmmac');
+const ourFakeDb = require('./lib/credentials');
 
-
-var server = restify.createServer();
+const server = restify.createServer();
 server.pre(restify.pre.pause());
 
 // timeout requests
-server.use(function(req, res, next) {
+server.use((req, res, next) => {
   next();
 
-  res.timeoutFn = setTimeout(function() {
+  res.timeoutFn = setTimeout(() => {
     if (!res.finished) {
+      // eslint-disable-next-line no-console
       console.log('A request timed out');
       res.end();
-      return;
     }
   }, 30000);
 });
 
 // we're done. clear timeout.
-server.on('after', function(req, res, route, err) {
+// eslint-disable-next-line no-unused-vars
+server.on('after', (req, res, route, err) => {
   if (res.timeoutFn) clearTimeout(res.timeoutFn);
 });
 
@@ -43,60 +44,60 @@ server.use(restify.jsonp());
 server.use(restify.gzipResponse());
 server.use(restify.bodyParser({ mapParams: false }));
 
-
 // the hmmac middleware needs to come after date and body have been parsed
 
 // this is identical to the default responder, except it also includes a console.log
-var customResponder = function(valid, req, res, next) { 
+const customResponder = (valid, req, res, next) => {
+  // eslint-disable-next-line no-console
   console.log('external');
-  if (true === valid) {
+
+  if (valid === true) {
     return next();
   }
-  else {
-    console.log('FAIL!', req.headers['authorization']);
-    if (typeof res.send == 'function') {
-      res.send(401, 'Unauthorizated');
-      return res.end();
-    }
-    else return next(401);
+
+  // eslint-disable-next-line no-console
+  console.log('FAIL!', req.headers.authorization);
+
+  if (typeof res.send === 'function') {
+    res.send(401, 'Unauthorized');
+
+    return res.end();
   }
+
+  return next(401);
 };
 
 // credentialProvider is required for middleware. it's just a function that looks up the key
 // and returns the secret in the format: { key:'', secret: '' }
-var hmmacOpts = {
-  credentialProvider: function(key, callback) {
-    ourFakeDb.lookup(key, function(record) {
+const hmmacOpts = {
+  credentialProvider(key, callback) {
+    ourFakeDb.lookup(key, (record) => {
       if (!record) return callback(null);
 
       // pass it to the callback, don't return it
-      callback({
+      return callback({
         key: record.key,
-        secret: record.secret
+        secret: record.secret,
       });
     });
-  }
+  },
 };
 
 server.use(Hmmac.middleware(hmmacOpts, customResponder));
 
+// eslint-disable-next-line no-unused-vars
+server.get('/fuckyeah', (req, res, next) => res.end());
 
-server.get('/fuckyeah', function(req, res, next) {
-  return res.end();
-});
+// eslint-disable-next-line no-unused-vars
+server.put('/fuckyeah', (req, res, next) => res.end());
 
-server.put('/fuckyeah', function(req, res, next) {
-  return res.end();
-});
+// eslint-disable-next-line no-unused-vars
+server.post('/fuckyeah/:id', (req, res, next) => res.end());
 
-server.post('/fuckyeah/:id', function(req, res, next) {
-  return res.end();
-});
-
-server.del('/fuckyeah/:id', function(req, res, next) {
-  return res.end();
-});
+// eslint-disable-next-line no-unused-vars
+server.del('/fuckyeah/:id', (req, res, next) => res.end());
 
 server.listen(8080);
 
+// eslint-disable-next-line no-console
 console.log('Restify listening on 8080...');
