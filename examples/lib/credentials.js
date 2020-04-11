@@ -6,27 +6,33 @@
  * Licensed under the MIT license.
  */
 
-var ourFakeCredentialsDb = [
+const ourFakeCredentialsDb = [
   { key: '1', secret: 'a' },
   { key: '2', secret: 'b' },
-  { key: '3', secret: 'c' }
+  { key: '3', secret: 'c' },
 ];
 
 module.exports = {
-	lookup: function(key, callback) {
-		console.log('looking up key ' + key + '...');
-		// make async
-    process.nextTick(function() {
-      for (var i=0; i < ourFakeCredentialsDb.length; i++) {
-        var cred = ourFakeCredentialsDb[i];
-        if (cred.key == key) {
-        	console.log('found. returning ' + cred);
-        	return callback(cred);
+  lookup(key, callback) {
+    // eslint-disable-next-line no-console
+    console.log(`looking up key ${key}...`);
+    // make async
+    process.nextTick(() => {
+      for (let i = 0; i < ourFakeCredentialsDb.length; i += 1) {
+        const cred = ourFakeCredentialsDb[i];
+
+        if (cred.key === key) {
+          // eslint-disable-next-line no-console
+          console.log(`found. returning ${cred}`);
+
+          return callback(cred);
         }
       }
 
+      // eslint-disable-next-line no-console
       console.log('not found.');
-      callback(null);
+
+      return callback(null);
     });
-	}
+  },
 };

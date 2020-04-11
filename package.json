@@ -1,7 +1,7 @@
 {
-  "name": "hmmac",
+  "name": "hmmac-es6",
   "description": "Easy HMAC connect/express middleware",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "homepage": "https://github.com/cmawhorter/hmmac",
   "author": {
     "name": "Cory Mawhorter",
@@ -26,6 +26,7 @@
   "devDependencies": {
     "aws-sdk": "^2.1.35",
     "body-parser": "^1.13.1",
+    "eslint-config-airbnb-base": "^14.1.0",
     "express": "^4.13.0",
     "grunt": "0.4.x",
     "grunt-cli": "^0.1.13",
@@ -34,7 +35,14 @@
     "grunt-simple-mocha": "0.4.x",
     "mocha": "^1.17.1",
     "restify": "2.x",
-    "superagent": "0.12.x"
+    "superagent": "0.12.x",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-typescript": "^6.3.1",
+    "eslint-config-prettier": "^6.10.0",
+    "eslint-plugin-eslint-comments": "^3.1.2",
+    "eslint-plugin-import": "^2.20.0",
+    "eslint-plugin-jest": "^23.6.0",
+    "prettier": "^1.19.1"
   },
   "keywords": [
     "hmac",

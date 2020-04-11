@@ -1,3 +1,5 @@
+/* eslint-disable eslint-comments/disable-enable-pair */
+/* eslint-disable no-console */
 /*
  * hmmac
  * https://github.com/cmawhorter/hmmac
@@ -15,39 +17,38 @@
 //   node examples/client.js plain fail # http 401
 // You must run examples/server.js or examples/middleware.js prior to running client.js
 
-var http = require('http')
-  , crypto = require('crypto');
+const http = require('http');
 
-var Hmmac = require('../lib/hmmac');
-var scheme = process.argv[2] || 'aws4';
+const Hmmac = require('../lib/hmmac');
 
-var hmmac = new Hmmac({ scheme: Hmmac.schemes.load(scheme) })
-  , ourValidApiCredentials = {key: '1', secret: 'a'}
-  , ourInvalidApiCredentials = {key: '1', secret: 'not the correct secret'}
-  , payload = JSON.stringify({some:'thing'})
-  , httpRequest = {
-      host: 'localhost',
-      port: 8080,
-      path: '/fuckyeah',
-      method: 'PUT',
-      body: payload,
-      headers: {
-        'Content-Type': 'application/json',
-        'Date': new Date().toUTCString()
-      }
-    };
+const scheme = process.argv[2] || 'aws4';
+
+const hmmac = new Hmmac({ scheme: Hmmac.schemes.load(scheme) });
+const ourValidApiCredentials = { key: '1', secret: 'a' };
+const ourInvalidApiCredentials = { key: '1', secret: 'not the correct secret' };
+const payload = JSON.stringify({ some: 'thing' });
+const httpRequest = {
+  host: 'localhost',
+  port: 8080,
+  path: '/fuckyeah',
+  method: 'PUT',
+  body: payload,
+  headers: {
+    'Content-Type': 'application/json',
+    Date: new Date().toUTCString(),
+  },
+};
 
 function triggerRequest(signedRequest) {
   console.log(signedRequest);
   console.log('\tmaking request...');
-  var req = http.request(signedRequest, function(res) {
+  const req = http.request(signedRequest, (res) => {
     console.log('\tdone.');
     console.log('\thandling response...');
 
     if (res.statusCode === 200) {
       console.log('Success!');
-    }
-    else {
+    } else {
       console.log(res.statusCode, res.headers);
     }
 
@@ -61,16 +62,19 @@ function triggerRequest(signedRequest) {
 }
 
 // specify an arg to trigger a failing req
-if (typeof process.argv[3] != 'undefined') {
+if (typeof process.argv[3] !== 'undefined') {
   console.log('Signing Request with INVALID credentials');
   hmmac.sign(httpRequest, ourInvalidApiCredentials); // fail
-}
-else {
+} else {
   console.log('Signing Request with valid credentials');
   hmmac.sign(httpRequest, ourValidApiCredentials); // success
 }
 
-console.log('Triggering ' + (process.argv[3] ? '401' : '200') + ' ' + scheme + ' request in 1 second...');
-setTimeout(function() {
+console.log(
+  `Triggering ${
+    process.argv[3] ? '401' : '200'
+  } ${scheme} request in 1 second...`,
+);
+setTimeout(() => {
   triggerRequest(httpRequest);
 }, 1000);

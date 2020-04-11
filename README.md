@@ -17,14 +17,14 @@ What is this useful for? Building arbitrary stateless authentication schemes and
 Hmmac ships with two main components.  The first is the Hmmac object, which you can instantiate and use to sign on your own.
 
 ```javascript
-var Hmmac = require('hmmac');
+var Hmmac = require('hmmac-es6');
 var hmmac = new Hmmac();
 ```
 
 The second is the middleware for use with any connect-based thingy.
 
 ```javascript
-var Hmmac = require('hmmac');
+var Hmmac = require('hmmac-es6');
 server.use(Hmmac.middleware()); // middleware requires a credentialProvider, but we'll get to that later
 ```
 
@@ -52,7 +52,7 @@ server.post('/message', verifySigned, function(req, res, next) {
 These are the current defaults.  Most are self-explanatory. You specify them like so:
 
 ```javascript
-var Hmmac = require('hmmac');
+var Hmmac = require('hmmac-es6');
 var hmmac = new Hmmac({ algorithm: 'sha1' }); // normal
 server.use(Hmmac.middleware({ credentialProvider: function(key, callback){} })); // middleware
 // btw: you can pass an existing instance directly to the middleware

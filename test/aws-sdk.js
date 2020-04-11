@@ -1,116 +1,122 @@
+/* eslint-disable eslint-comments/disable-enable-pair */
+/* eslint-disable jest/expect-expect */
 // Pulled from https://github.com/cmawhorter/hmmac/issues/10
 
+const express = require('express');
+const AWS = require('aws-sdk');
+const Hmmac = require('../lib/hmmac.js');
 
-var assert = require('assert');
+const accessKeyId = 's3box';
+const secretAccessKey = 's3box';
 
-var express = require('express');
-var Hmmac = require('../lib/hmmac.js');
-var AWS = require('aws-sdk');
+describe('node aws-sdk', () => {
+  it('should authenticate against hmmac aws v4 scheme', () =>
+    new Promise((done) => {
+      const app = express();
+      const hmmac = new Hmmac({
+        scheme: Hmmac.schemes.load('aws4'),
+        acceptableDateSkew: false,
+        // debug: 3,
+        schemeConfig: {
+          region: 's3box',
+          service: 's3',
+        },
+        credentialProvider(key, callback) {
+          if (key !== accessKeyId) {
+            return callback(null);
+          }
 
-var accessKeyId = 's3box';
-var secretAccessKey = 's3box';
-
-
-describe('node aws-sdk', function() {
-
-  it('should authenticate against hmmac aws v4 scheme', function(done) {
-    var app = express();
-    var hmmac = new Hmmac({
-      scheme: Hmmac.schemes.load('aws4'),
-      acceptableDateSkew: false,
-      // debug: 3,
-      schemeConfig: {
-        region: 's3box',
-        service: 's3'
-      },
-      credentialProvider: function(key, callback) {
-        if(key !== accessKeyId) {
-          return callback(null)
-        } else {
-          callback({ key: accessKeyId, secret: secretAccessKey});
-        }
-      }
-    });
-
-    app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
-        var err = true === valid ? null : new Error('request was VALID when it should have been INVALID');
-        if (err) {
-          hmmac.why();
-        }
-        done(err);
-      });
-    });
-
-    var server = app.listen(12300, function () {
-      AWS.config.update({
-        "accessKeyId": accessKeyId,
-        "secretAccessKey": secretAccessKey,
-        "region": "s3box",
-        "endpoint": "127.0.0.1:12300",
-        "maxRetries": 0,
-        "s3ForcePathStyle": true,
-        "sslEnabled": false,
-        "signatureVersion": "v4"
+          return callback({ key: accessKeyId, secret: secretAccessKey });
+        },
       });
 
-      var s3bucket = new AWS.S3({params: {Bucket: 'fooobar'}});
-      s3bucket.createBucket(function(err) {
-        // ignore error
+      // eslint-disable-next-line no-unused-vars
+      app.use((req, res, next) => {
+        hmmac.validate(req, (valid) => {
+          const err =
+            valid === true
+              ? null
+              : new Error('request was VALID when it should have been INVALID');
+
+          if (err) {
+            hmmac.why();
+          }
+          done(err);
+        });
       });
 
-    });
+      app.listen(12300, () => {
+        AWS.config.update({
+          accessKeyId,
+          secretAccessKey,
+          region: 's3box',
+          endpoint: '127.0.0.1:12300',
+          maxRetries: 0,
+          s3ForcePathStyle: true,
+          sslEnabled: false,
+          signatureVersion: 'v4',
+        });
 
-  });
-
-  it('should not authenticate invalid hmmac aws v4 scheme', function(done) {
-    var app = express();
-    var hmmac = new Hmmac({
-      scheme: Hmmac.schemes.load('aws4'),
-      acceptableDateSkew: 600,
-      // debug: 3,
-      schemeConfig: {
-        region: 's3box',
-        service: 's3'
-      },
-      credentialProvider: function(key, callback) {
-        if(key !== accessKeyId) {
-          return callback(null)
-        } else {
-          callback({ key: accessKeyId, secret: 'invalid'});
-        }
-      }
-    });
-
-    app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
-        var err = false === valid ? null : new Error('request was INVALID when it should have been VALID');
-        if (err) {
-          hmmac.why();
-        }
-        done(err);
+        const s3bucket = new AWS.S3({ params: { Bucket: 'fooobar' } });
+        // eslint-disable-next-line no-unused-vars
+        s3bucket.createBucket((err) => {
+          // ignore error
+        });
       });
-    });
+    }));
 
-    var server = app.listen(12301, function () {
-      AWS.config.update({
-        "accessKeyId": accessKeyId,
-        "secretAccessKey": secretAccessKey,
-        "region": "s3box",
-        "endpoint": "127.0.0.1:12301",
-        "maxRetries": 0,
-        "s3ForcePathStyle": true,
-        "sslEnabled": false,
-        "signatureVersion": "v4"
+  it('should not authenticate invalid hmmac aws v4 scheme', () =>
+    new Promise((done) => {
+      const app = express();
+      const hmmac = new Hmmac({
+        scheme: Hmmac.schemes.load('aws4'),
+        acceptableDateSkew: 600,
+        // debug: 3,
+        schemeConfig: {
+          region: 's3box',
+          service: 's3',
+        },
+        credentialProvider(key, callback) {
+          if (key !== accessKeyId) {
+            return callback(null);
+          }
+
+          return callback({ key: accessKeyId, secret: 'invalid' });
+        },
       });
 
-      var s3bucket = new AWS.S3({params: {Bucket: 'fooobar'}});
-      s3bucket.createBucket(function(err) {
-        // ignore error
+      // eslint-disable-next-line no-unused-vars
+      app.use((req, res, next) => {
+        hmmac.validate(req, (valid) => {
+          const err =
+            valid === false
+              ? null
+              : new Error('request was INVALID when it should have been VALID');
+
+          if (err) {
+            hmmac.why();
+          }
+          done(err);
+        });
       });
 
-    });
+      app.listen(12301, () => {
+        AWS.config.update({
+          accessKeyId,
+          secretAccessKey,
+          region: 's3box',
+          endpoint: '127.0.0.1:12301',
+          maxRetries: 0,
+          s3ForcePathStyle: true,
+          sslEnabled: false,
+          signatureVersion: 'v4',
+        });
 
-  });
-
+        const s3bucket = new AWS.S3({ params: { Bucket: 'fooobar' } });
+        // eslint-disable-next-line no-unused-vars
+        s3bucket.createBucket((err) => {
+          // ignore error
+        });
+      });
+    }));
 });

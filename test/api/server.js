@@ -6,22 +6,23 @@
  * Licensed under the MIT license.
  */
 
-var restify = require('restify');
+const restify = require('restify');
 
-var server = restify.createServer();
+const server = restify.createServer();
 server.pre(restify.pre.pause());
 
 // timeout requests
-server.use(function(req, res, next) {
+server.use((req, res, next) => {
   next();
 
-  res.timeoutFn = setTimeout(function() {
+  res.timeoutFn = setTimeout(() => {
     if (!res.finished) res.end();
   }, 30000);
 });
 
 // we're done. clear timeout.
-server.on('after', function(req, res, route, err) {
+// eslint-disable-next-line no-unused-vars
+server.on('after', (req, res, route, err) => {
   if (res.timeoutFn) clearTimeout(res.timeoutFn);
 });
 

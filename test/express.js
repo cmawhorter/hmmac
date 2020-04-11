@@ -1,164 +1,157 @@
+/* eslint-disable eslint-comments/disable-enable-pair */
+/* eslint-disable no-unused-vars */
+/* eslint-disable jest/expect-expect */
+const http = require('http');
 
-var assert = require('assert');
-var http = require('http');
+const express = require('express');
+const bodyParser = require('body-parser');
+const Hmmac = require('../lib/hmmac.js');
 
-var express = require('express');
-var bodyParser = require('body-parser');
-var Hmmac = require('../lib/hmmac.js');
+const validCreds = { key: 'a', secret: '1' };
+const invalidCreds = { key: 'a', secret: '2' };
 
-var validCreds = { key: 'a', secret: '1' };
-var invalidCreds = { key: 'a', secret: '2' };
-
-describe('node express', function() {
-
-  it('should authenticate GET without body parser', function(done) {
-    var app = express();
-    var hmmac = new Hmmac({
-      credentialProvider: function(key, callback) {
-        callback(validCreds);
-      }
-    });
-
-    app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
-        done(true === valid ? null : new Error('did not validate'));
-      });
-    });
-
-    var server = app.listen(12400, function () {
-      var signedRequest = {
-        host: '127.0.0.1',
-        port: 12400,
-        path: '/',
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Date': new Date().toUTCString()
-        }
-      };
-      hmmac.sign(signedRequest, validCreds);
-      var req = http.request(signedRequest, function(res) {
-
+describe('node express', () => {
+  it('should authenticate GET without body parser', () =>
+    new Promise((done) => {
+      const app = express();
+      const hmmac = new Hmmac({
+        credentialProvider(key, callback) {
+          callback(validCreds);
+        },
       });
 
-      req.end();
-    });
-  });
-
-
-  it('should authenticate GET with body parser', function(done) {
-    var app = express();
-    var hmmac = new Hmmac({
-      credentialProvider: function(key, callback) {
-        callback(validCreds);
-      }
-    });
-
-    app.use(bodyParser.json());
-
-    app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
-        done(true === valid ? null : new Error('did not validate'));
-      });
-    });
-
-    var server = app.listen(12405, function () {
-      var signedRequest = {
-        host: '127.0.0.1',
-        port: 12405,
-        path: '/',
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Date': new Date().toUTCString()
-        }
-      };
-      hmmac.sign(signedRequest, validCreds);
-      var req = http.request(signedRequest, function(res) {
-
+      app.use((req, res, next) => {
+        hmmac.validate(req, (valid) => {
+          done(valid === true ? null : new Error('did not validate'));
+        });
       });
 
-      req.end();
-    });
-  });
+      app.listen(12400, () => {
+        const signedRequest = {
+          host: '127.0.0.1',
+          port: 12400,
+          path: '/',
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Date: new Date().toUTCString(),
+          },
+        };
+        hmmac.sign(signedRequest, validCreds);
+        const req = http.request(signedRequest, (res) => {});
 
-  it('should authenticate PUT', function(done) {
-    var app = express();
-    var hmmac = new Hmmac({
-      credentialProvider: function(key, callback) {
-        callback(validCreds);
-      }
-    });
-
-    app.use(bodyParser.json());
-
-    app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
-        done(true === valid ? null : new Error('did not validate'));
+        req.end();
       });
-    });
+    }));
 
-    var server = app.listen(12401, function () {
-      var payload = JSON.stringify({ some: 'thing' });
-      var signedRequest = {
-        host: '127.0.0.1',
-        port: 12401,
-        path: '/',
-        method: 'PUT',
-        body: payload,
-        headers: {
-          'Content-Type': 'application/json',
-          'Date': new Date().toUTCString()
-        }
-      };
-      hmmac.sign(signedRequest, validCreds);
-      var req = http.request(signedRequest, function(res) {
-
+  it('should authenticate GET with body parser', () =>
+    new Promise((done) => {
+      const app = express();
+      const hmmac = new Hmmac({
+        credentialProvider(key, callback) {
+          callback(validCreds);
+        },
       });
 
-      req.write(payload);
-      req.end();
-    });
-  });
+      app.use(bodyParser.json());
 
-
-  it('should not authenticate invalid', function(done) {
-    var app = express();
-    var hmmac = new Hmmac({
-      credentialProvider: function(key, callback) {
-        callback(validCreds);
-      }
-    });
-
-    app.use(bodyParser.json());
-
-    app.use(function (req, res, next) {
-      hmmac.validate(req, function(valid) {
-        done(false === valid ? null : new Error('did not validate'));
-      });
-    });
-
-    var server = app.listen(12402, function () {
-      var payload = JSON.stringify({ some: 'thing' });
-      var signedRequest = {
-        host: '127.0.0.1',
-        port: 12402,
-        path: '/',
-        method: 'PUT',
-        body: payload,
-        headers: {
-          'Content-Type': 'application/json',
-          'Date': new Date().toUTCString()
-        }
-      };
-      hmmac.sign(signedRequest, invalidCreds);
-      var req = http.request(signedRequest, function(res) {
-
+      app.use((req, res, next) => {
+        hmmac.validate(req, (valid) => {
+          done(valid === true ? null : new Error('did not validate'));
+        });
       });
 
-      req.write(payload);
-      req.end();
-    });
-  });
+      const server = app.listen(12405, () => {
+        const signedRequest = {
+          host: '127.0.0.1',
+          port: 12405,
+          path: '/',
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Date: new Date().toUTCString(),
+          },
+        };
+        hmmac.sign(signedRequest, validCreds);
+        const req = http.request(signedRequest, (res) => {});
 
+        req.end();
+      });
+    }));
+
+  it('should authenticate PUT', () =>
+    new Promise((done) => {
+      const app = express();
+      const hmmac = new Hmmac({
+        credentialProvider(key, callback) {
+          callback(validCreds);
+        },
+      });
+
+      app.use(bodyParser.json());
+
+      app.use((req, res, next) => {
+        hmmac.validate(req, (valid) => {
+          done(valid === true ? null : new Error('did not validate'));
+        });
+      });
+
+      const server = app.listen(12401, () => {
+        const payload = JSON.stringify({ some: 'thing' });
+        const signedRequest = {
+          host: '127.0.0.1',
+          port: 12401,
+          path: '/',
+          method: 'PUT',
+          body: payload,
+          headers: {
+            'Content-Type': 'application/json',
+            Date: new Date().toUTCString(),
+          },
+        };
+        hmmac.sign(signedRequest, validCreds);
+        const req = http.request(signedRequest, (res) => {});
+
+        req.write(payload);
+        req.end();
+      });
+    }));
+
+  it('should not authenticate invalid', () =>
+    new Promise((done) => {
+      const app = express();
+      const hmmac = new Hmmac({
+        credentialProvider(key, callback) {
+          callback(validCreds);
+        },
+      });
+
+      app.use(bodyParser.json());
+
+      app.use((req, res, next) => {
+        hmmac.validate(req, (valid) => {
+          done(valid === false ? null : new Error('did not validate'));
+        });
+      });
+
+      const server = app.listen(12402, () => {
+        const payload = JSON.stringify({ some: 'thing' });
+        const signedRequest = {
+          host: '127.0.0.1',
+          port: 12402,
+          path: '/',
+          method: 'PUT',
+          body: payload,
+          headers: {
+            'Content-Type': 'application/json',
+            Date: new Date().toUTCString(),
+          },
+        };
+        hmmac.sign(signedRequest, invalidCreds);
+        const req = http.request(signedRequest, (res) => {});
+
+        req.write(payload);
+        req.end();
+      });
+    }));
 });
